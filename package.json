@@ -1,0 +1,13 @@
+{
+  "name": "dac-equipflow",
+  "private": true,
+  "scripts": {
+    "predev": "node scripts/ensure-frontend-env.cjs",
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "node scripts/run-backend.cjs",
+    "dev:web": "cd frontend && npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

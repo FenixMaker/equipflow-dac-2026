@@ -1,0 +1,23 @@
+CHECKLIST — Documento orientador DAC (UCDB / Campo Grande)
+Fonte: orientacoes_dac.pdf (texto extraído automaticamente; conferir o PDF original).
+
+INSTITUCIONAL
+- DAC articula disciplinas do semestre; trabalho extraclasse com Professor Referência.
+- Equipes: mínimo 2 estudantes (definição pelo Professor Referência no AVA).
+- Participação obrigatória em todas as etapas; exclusão por não envolvimento = sem nota.
+- Plano de Aprendizagem no AVA é referência principal; criatividade permitida dentro do fluxo.
+
+ENTREGAS (conforme Plano de Aprendizagem do semestre — 05_dac_2026a)
+- Documento do projeto (PDF) com: problema, público-alvo, justificativa da solução e tecnologias,
+  objetivos e funcionalidades.
+- Apresentação à banca: navegação nas telas, UX, como ajuda a organização, problema e benefícios.
+
+FORMATAÇÃO DO PDF
+- O PDF de orientações é majoritariamente conceitual; não especifica margens/ABNT no trecho extraído.
+- Recomenda-se: capa com UCDB, curso, semestre, disciplinas/componentes, título do projeto,
+  nomes da equipe, Professor Referência (Alexandre dos Santos Batista — RF 15881, se aplicável),
+  cidade/ano.
+- Confirmar no AVA ou com o professor: normas de citação, folha de rosto e estrutura de seções.
+
+PRÓXIMO PASSO
+- Abrir o PDF original para ilustrações/layout que não foram extraídas como texto.

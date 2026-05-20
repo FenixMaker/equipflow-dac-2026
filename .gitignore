@@ -1,0 +1,28 @@
+# Dependências
+node_modules/
+frontend/node_modules/
+
+# Build
+frontend/dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+backend/.venv/
+
+# Dados locais e segredos
+backend/data/
+backend/.env
+frontend/.env
+
+# IDE e sistema
+.vscode/
+.idea/
+.cursor/
+*.swp
+Thumbs.db
+Desktop.ini
+
+# Extrações temporárias de documentação
+docs_extract_orientacoes.txt
