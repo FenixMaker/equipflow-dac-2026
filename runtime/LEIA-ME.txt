@@ -1,0 +1,8 @@
+Esta pasta fica vazia no Git.
+
+Para gerar o pacote portatil (Node + Python embutidos):
+  1. Duplo clique em preparar-portatil.bat (na raiz do projeto, com internet)
+  2. Copie a pasta INTEIRA do projeto para outro PC (ZIP ou pendrive)
+  3. No outro PC: duplo clique em iniciar-equipflow.bat
+
+Nao e preciso instalar Node.js nem Python no outro computador.

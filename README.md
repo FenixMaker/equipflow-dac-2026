@@ -217,7 +217,15 @@ Todas as capturas do protótipo, em ordem, para consulta rápida ou uso em slide
 
 Duplo clique em **`iniciar-equipflow.bat`** na raiz do projeto.
 
-O script escolhe Python 3.11–3.13, cria o `backend\.venv` (ou recria se estiver em 3.14+), instala dependências, copia `frontend\.env` se necessário e executa API + Vite.
+O script escolhe Python 3.11–3.13, cria o `backend\.venv` (ou recria se estiver em 3.14+), instala dependências **somente na primeira vez** (ou se faltar pasta), copia `frontend\.env` se necessário e executa API + Vite.
+
+### Levar para outro PC (recomendado — sem instalar nada lá)
+
+1. **Neste PC:** duplo clique em **`preparar-portatil.bat`** (internet **uma vez**). Gera `runtime\node`, `runtime\python` e instala dependências.
+2. Copie a **pasta inteira** do projeto (ZIP ou pendrive), com `runtime\`, `node_modules\` e `frontend\node_modules\`.
+3. **No outro PC:** duplo clique em **`iniciar-equipflow.bat`** — não precisa instalar Node nem Python.
+
+> Copiar só o `backend\.venv` **não** funciona em outro Windows (caminhos fixos). Use o modo portátil acima.
 
 ### Opção 2 — Um comando na raiz
 
@@ -339,7 +347,8 @@ equipflow-dac-2026/
 ├── frontend/public/brand/ # Logotipos
 ├── docs/                  # Documentação e capturas
 ├── scripts/               # Utilitários npm
-├── iniciar-equipflow.bat  # Atalho Windows
+├── iniciar-equipflow.bat   # Inicia o projeto
+├── preparar-portatil.bat   # Gera runtime\ (uma vez, para outros PCs)
 └── package.json           # Orquestra API + Vite
 ```
 

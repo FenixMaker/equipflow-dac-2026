@@ -2,6 +2,11 @@
 node_modules/
 frontend/node_modules/
 
+# Runtime portatil (gerado por preparar-portatil.bat; incluir ao enviar ZIP para outro PC)
+runtime/node/
+runtime/python/
+runtime/_tmp/
+
 # Build
 frontend/dist/
 
