@@ -31,3 +31,6 @@ Desktop.ini
 
 # Extrações temporárias de documentação
 docs_extract_orientacoes.txt
+
+# Scripts pontuais de manutenção (não fazem parte do produto)
+recriar-repositorio-github.bat

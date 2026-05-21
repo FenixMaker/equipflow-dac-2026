@@ -21,3 +21,16 @@ FORMATAÇÃO DO PDF
 
 PRÓXIMO PASSO
 - Abrir o PDF original para ilustrações/layout que não foram extraídas como texto.
+
+MAPEAMENTO EQUIPFLOW (artefatos em docs/)
+- documento-projeto-dac.md
+  · Seção 1 → problema + público-alvo
+  · Seção 2 → justificativa da solução (web) + tecnologias + comunicação front/back
+  · Seção 3 → objetivos + 5 funcionalidades + acessibilidade
+  · Anexo → exportar PDF (capa + 2–3 screenshots em docs/screenshots/)
+- guia-slides-apresentacao.md (guia de como montar cada slide)
+  · Slides 2–4 → problema e proposta
+  · Slide 7 → três colunas: prática, problema resolvido, benefícios
+  · Slide 8 → UX e acessibilidade
+  · Slide 10 → checklist da demo + contas demo
+- Preencher manualmente: nomes e RAs da equipe no documento e nos slides.

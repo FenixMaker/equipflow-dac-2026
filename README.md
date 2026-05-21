@@ -333,7 +333,7 @@ DATABASE_URL=sqlite:///./data/equipflow.db
 |---------|-----------|
 | [documento-projeto-dac.md](docs/documento-projeto-dac.md) | Texto-base para o PDF do projeto |
 | [checklist-orientacoes-ucdb.txt](docs/checklist-orientacoes-ucdb.txt) | Checklist do documento orientador |
-| [roteiro-apresentacao-slides.md](docs/roteiro-apresentacao-slides.md) | Roteiro de slides para a banca |
+| [guia-slides-apresentacao.md](docs/guia-slides-apresentacao.md) | Guia de montagem dos slides para a banca |
 | [screenshots/](docs/screenshots/) | Capturas de tela do protótipo |
 
 ---
@@ -342,14 +342,14 @@ DATABASE_URL=sqlite:///./data/equipflow.db
 
 ```
 equipflow-dac-2026/
-├── backend/app/           # API REST (FastAPI)
-├── frontend/src/          # Interface React
-├── frontend/public/brand/ # Logotipos
-├── docs/                  # Documentação e capturas
-├── scripts/               # Utilitários npm
-├── iniciar-equipflow.bat   # Inicia o projeto
-├── preparar-portatil.bat   # Gera runtime\ (uma vez, para outros PCs)
-└── package.json           # Orquestra API + Vite
+├── backend/app/              # API REST (FastAPI)
+├── frontend/src/             # Interface React
+├── frontend/public/brand/    # Logotipos
+├── docs/                     # Documentação DAC + screenshots/
+├── scripts/                  # Utilitários (env, backend, portátil)
+├── iniciar-equipflow.bat     # Inicia o projeto
+├── preparar-portatil.bat     # Gera runtime\ (uma vez, para outros PCs)
+└── package.json              # Orquestra API + Vite
 ```
 
 ---
