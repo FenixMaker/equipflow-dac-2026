@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.deps import get_current_user, require_admin
 from app.models import Equipment, EquipmentStatus, Loan, LoanStatus, User
+from app.loan_dates import validate_loan_schedule
 from app.schemas import LoanCreate, LoanRead
 from app.terms import CURRENT_LOAN_TERMS_VERSION
 
@@ -62,9 +63,14 @@ def create_loan(
         )
 
     now = datetime.now(timezone.utc)
+    date_err = validate_loan_schedule(body.pickup_at, body.due_at, now=now)
+    if date_err:
+        raise HTTPException(status_code=400, detail=date_err)
+
     loan = Loan(
         equipment_id=eq.id,
         borrower_id=user.id,
+        pickup_at=body.pickup_at,
         due_at=body.due_at,
         status=LoanStatus.pendente,
         terms_accepted_at=now,
@@ -188,6 +194,7 @@ def approve_loan(
         )
 
     loan.status = LoanStatus.ativo
+    loan.approved_at = datetime.now(timezone.utc)
     eq.status = EquipmentStatus.emprestado
     db.commit()
     db.refresh(loan)

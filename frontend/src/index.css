@@ -2029,11 +2029,13 @@ textarea {
 }
 
 /* ——— Campos data (tema escuro no Chrome) ——— */
-input[type='datetime-local'] {
+input[type='datetime-local'],
+input[type='date'] {
   color-scheme: dark;
 }
 
-:root[data-theme='light'] input[type='datetime-local'] {
+:root[data-theme='light'] input[type='datetime-local'],
+:root[data-theme='light'] input[type='date'] {
   color-scheme: light;
 }
 

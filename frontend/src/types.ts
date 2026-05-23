@@ -24,7 +24,9 @@ export interface Loan {
   equipment_id: number
   borrower_id: number
   created_at: string
+  pickup_at: string
   due_at: string
+  approved_at: string | null
   returned_at: string | null
   status: LoanStatus
   terms_accepted_at: string | null

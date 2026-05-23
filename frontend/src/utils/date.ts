@@ -1,9 +1,60 @@
-/** Data/hora mínima para `datetime-local` (agora, fuso local). */
-export function minDatetimeLocalValue(): string {
+import type { LoanStatus } from '../types'
+
+export const MIN_LOAN_DAYS = 3
+
+/** Data mínima para `input[type=date]` (hoje, fuso local). */
+export function minDateValue(): string {
   const d = new Date()
-  d.setSeconds(0, 0)
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
-  return d.toISOString().slice(0, 16)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/** Soma dias a um valor `YYYY-MM-DD` (calendário local). */
+export function addDaysToDateInput(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + days)
+  const yy = dt.getFullYear()
+  const mm = String(dt.getMonth() + 1).padStart(2, '0')
+  const dd = String(dt.getDate()).padStart(2, '0')
+  return `${yy}-${mm}-${dd}`
+}
+
+/** Converte `YYYY-MM-DD` (dia local) para ISO UTC (meio-dia UTC). */
+export function dateInputToUtcIso(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).toISOString()
+}
+
+function parseDateInput(dateStr: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/** Valida retirada/devolução no formulário; retorna mensagem ou null. */
+export function validateLoanDateInputs(pickup: string, due: string): string | null {
+  if (!pickup.trim() || !due.trim()) {
+    return 'Indique a data de retirada e a data de devolução.'
+  }
+  const pickupD = parseDateInput(pickup)
+  const dueD = parseDateInput(due)
+  if (!pickupD || !dueD) return 'Datas inválidas.'
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  pickupD.setHours(0, 0, 0, 0)
+  dueD.setHours(0, 0, 0, 0)
+  if (pickupD < today) return 'A data de retirada não pode ser anterior a hoje.'
+  if (dueD <= pickupD) {
+    return 'A data de devolução deve ser posterior à data de retirada (não pode ser no mesmo dia).'
+  }
+  const gap = Math.round((dueD.getTime() - pickupD.getTime()) / 86400000)
+  if (gap < MIN_LOAN_DAYS) {
+    return `O empréstimo deve ter no mínimo ${MIN_LOAN_DAYS} dias entre retirada e devolução.`
+  }
+  return null
 }
 
 export function fmtDateTime(iso: string): string {
@@ -14,14 +65,35 @@ export function fmtDateTime(iso: string): string {
   }
 }
 
-import type { LoanStatus } from '../types'
+export function fmtDateOnly(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('pt-BR', { dateStyle: 'short' })
+  } catch {
+    return iso
+  }
+}
 
-/** Empréstimo ativo com data prevista já passada. */
+/** Retirada efetiva (após aprovação) ou traço. */
+export function fmtApprovedAt(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  return fmtDateTime(iso)
+}
+
+/** Empréstimo ativo com data prevista de devolução já passada (fim do dia UTC da due_at). */
 export function isLoanOverdue(dueIso: string, status: LoanStatus): boolean {
   if (status !== 'ativo') return false
   try {
-    return new Date(dueIso).getTime() < Date.now()
+    const due = new Date(dueIso)
+    const dueEnd = new Date(due)
+    dueEnd.setUTCHours(23, 59, 59, 999)
+    return Date.now() > dueEnd.getTime()
   } catch {
     return false
   }
+}
+
+export function dateSummaryFromInput(dateStr: string): string {
+  const d = parseDateInput(dateStr)
+  if (!d) return dateStr || '—'
+  return d.toLocaleDateString('pt-BR', { dateStyle: 'short' })
 }

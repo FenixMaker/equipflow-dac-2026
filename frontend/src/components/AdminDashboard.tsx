@@ -6,7 +6,7 @@ import { DashboardSkeleton } from './DashboardSkeleton'
 import { EditEquipmentDialog } from './EditEquipmentDialog'
 import { EquipmentStatusPill } from './StatusPill'
 import { equipmentStatusLabel } from '../labels/equipmentStatus'
-import { fmtDateTime } from '../utils/date'
+import { fmtApprovedAt, fmtDateOnly, fmtDateTime, isLoanOverdue } from '../utils/date'
 
 const POLL_MS = 12_000
 
@@ -545,7 +545,8 @@ export function AdminDashboard() {
                   <th scope="col">Equipamento</th>
                   <th scope="col">Tomador</th>
                   <th scope="col">Pedido em</th>
-                  <th scope="col">Devolver até</th>
+                  <th scope="col">Retirada prevista</th>
+                  <th scope="col">Devolução prevista</th>
                   <th scope="col">Aceite do termo</th>
                   <th scope="col">Ações</th>
                 </tr>
@@ -558,7 +559,8 @@ export function AdminDashboard() {
                       <td>{l.equipment?.name ?? '—'}</td>
                       <td>{l.borrower?.full_name ?? l.borrower?.email ?? '—'}</td>
                       <td>{fmtDateTime(l.created_at)}</td>
-                      <td>{fmtDateTime(l.due_at)}</td>
+                      <td>{fmtDateOnly(l.pickup_at)}</td>
+                      <td>{fmtDateOnly(l.due_at)}</td>
                       <td>
                         {l.terms_accepted_at ? (
                           <span className="cell-sub">
@@ -617,20 +619,20 @@ export function AdminDashboard() {
                 <tr>
                   <th scope="col">Equipamento</th>
                   <th scope="col">Tomador</th>
-                  <th scope="col">Retirada</th>
+                  <th scope="col">Retirada efetiva</th>
                   <th scope="col">Devolver até</th>
                 </tr>
               </thead>
               <tbody>
                 {active.map((l) => {
-                  const overdue = new Date(l.due_at).getTime() < Date.now()
+                  const overdue = isLoanOverdue(l.due_at, l.status)
                   return (
                     <tr key={l.id} className={overdue ? 'row-alert' : undefined}>
                       <td>{l.equipment?.name ?? '—'}</td>
                       <td>{l.borrower?.full_name ?? l.borrower?.email ?? '—'}</td>
-                      <td>{fmtDateTime(l.created_at)}</td>
+                      <td>{fmtApprovedAt(l.approved_at)}</td>
                       <td>
-                        <span className={overdue ? 'text-alert' : undefined}>{fmtDateTime(l.due_at)}</span>
+                        <span className={overdue ? 'text-alert' : undefined}>{fmtDateOnly(l.due_at)}</span>
                       </td>
                     </tr>
                   )
@@ -655,8 +657,8 @@ export function AdminDashboard() {
                 <tr>
                   <th scope="col">Equipamento</th>
                   <th scope="col">Tomador</th>
-                  <th scope="col">Retirada</th>
-                  <th scope="col">Prazo previsto</th>
+                  <th scope="col">Retirada efetiva</th>
+                  <th scope="col">Devolução prevista</th>
                   <th scope="col">Devolvido em</th>
                 </tr>
               </thead>
@@ -665,8 +667,8 @@ export function AdminDashboard() {
                   <tr key={l.id}>
                     <td>{l.equipment?.name ?? '—'}</td>
                     <td>{l.borrower?.full_name ?? l.borrower?.email ?? '—'}</td>
-                    <td>{fmtDateTime(l.created_at)}</td>
-                    <td>{fmtDateTime(l.due_at)}</td>
+                    <td>{fmtApprovedAt(l.approved_at)}</td>
+                    <td>{fmtDateOnly(l.due_at)}</td>
                     <td>{l.returned_at ? fmtDateTime(l.returned_at) : '—'}</td>
                   </tr>
                 ))}
@@ -735,6 +737,8 @@ export function AdminDashboard() {
                   <th scope="col">Equipamento</th>
                   <th scope="col">Tomador</th>
                   <th scope="col">Pedido em</th>
+                  <th scope="col">Retirada prevista</th>
+                  <th scope="col">Devolução prevista</th>
                   <th scope="col">Aceite do termo</th>
                 </tr>
               </thead>
@@ -744,6 +748,8 @@ export function AdminDashboard() {
                     <td>{l.equipment?.name ?? '—'}</td>
                     <td>{l.borrower?.full_name ?? l.borrower?.email ?? '—'}</td>
                     <td>{fmtDateTime(l.created_at)}</td>
+                    <td>{fmtDateOnly(l.pickup_at)}</td>
+                    <td>{fmtDateOnly(l.due_at)}</td>
                     <td>
                       {l.terms_accepted_at ? (
                         <span className="cell-sub">

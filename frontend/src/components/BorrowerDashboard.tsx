@@ -9,7 +9,7 @@ import { DashboardSkeleton } from './DashboardSkeleton'
 import { EquipmentDetailDialog } from './EquipmentDetailDialog'
 import { LoanRequestDialog } from './LoanRequestDialog'
 import { LoanSituationPill } from './StatusPill'
-import { fmtDateTime, isLoanOverdue } from '../utils/date'
+import { dateInputToUtcIso, fmtApprovedAt, fmtDateOnly, fmtDateTime, isLoanOverdue } from '../utils/date'
 
 const POLL_MS = 12_000
 
@@ -329,7 +329,8 @@ export function BorrowerDashboard() {
                   <th scope="col">Equipamento</th>
                   <th scope="col">Patrimônio</th>
                   <th scope="col">Pedido em</th>
-                  <th scope="col">Devolver até</th>
+                  <th scope="col">Retirada prevista</th>
+                  <th scope="col">Devolução prevista</th>
                   <th scope="col">Situação</th>
                 </tr>
               </thead>
@@ -345,7 +346,8 @@ export function BorrowerDashboard() {
                       )}
                     </td>
                     <td>{fmtDateTime(l.created_at)}</td>
-                    <td>{fmtDateTime(l.due_at)}</td>
+                    <td>{fmtDateOnly(l.pickup_at)}</td>
+                    <td>{fmtDateOnly(l.due_at)}</td>
                     <td>
                       <LoanSituationPill status={l.status} />
                     </td>
@@ -375,7 +377,7 @@ export function BorrowerDashboard() {
                 <tr>
                   <th scope="col">Equipamento</th>
                   <th scope="col">Patrimônio</th>
-                  <th scope="col">Retirada</th>
+                  <th scope="col">Retirada efetiva</th>
                   <th scope="col">Devolver até</th>
                   <th scope="col">Situação</th>
                   <th scope="col">Ação</th>
@@ -394,9 +396,9 @@ export function BorrowerDashboard() {
                           '—'
                         )}
                       </td>
-                      <td>{fmtDateTime(l.created_at)}</td>
+                      <td>{fmtApprovedAt(l.approved_at)}</td>
                       <td>
-                        <span className={overdue ? 'text-alert' : undefined}>{fmtDateTime(l.due_at)}</span>
+                        <span className={overdue ? 'text-alert' : undefined}>{fmtDateOnly(l.due_at)}</span>
                       </td>
                       <td>
                         <LoanSituationPill status={l.status} overdue={overdue} />
@@ -435,8 +437,10 @@ export function BorrowerDashboard() {
                 <tr>
                   <th scope="col">Equipamento</th>
                   <th scope="col">Patrimônio</th>
-                  <th scope="col">Retirada</th>
-                  <th scope="col">Prazo previsto</th>
+                  <th scope="col">Pedido em</th>
+                  <th scope="col">Retirada prevista</th>
+                  <th scope="col">Devolução prevista</th>
+                  <th scope="col">Retirada efetiva</th>
                   <th scope="col">Situação</th>
                   <th scope="col">Devolvido em</th>
                 </tr>
@@ -453,7 +457,9 @@ export function BorrowerDashboard() {
                       )}
                     </td>
                     <td>{fmtDateTime(l.created_at)}</td>
-                    <td>{fmtDateTime(l.due_at)}</td>
+                    <td>{fmtDateOnly(l.pickup_at)}</td>
+                    <td>{fmtDateOnly(l.due_at)}</td>
+                    <td>{fmtApprovedAt(l.approved_at)}</td>
                     <td>
                       <LoanSituationPill status={l.status} />
                     </td>
@@ -499,14 +505,15 @@ export function BorrowerDashboard() {
       <LoanRequestDialog
         equipment={requestEquipment}
         onDismiss={() => setRequestEquipment(null)}
-        onSubmitLoan={async (dueLocal) => {
+        onSubmitLoan={async (pickupLocal, dueLocal) => {
           const eq = requestEquipment
           if (!eq) return
           setMsg(null)
           setErr(null)
-          const due_at = new Date(dueLocal).toISOString()
+          const pickup_at = dateInputToUtcIso(pickupLocal)
+          const due_at = dateInputToUtcIso(dueLocal)
           try {
-            await loansApi.create(eq.id, due_at, {
+            await loansApi.create(eq.id, pickup_at, due_at, {
               terms_accepted: true,
               terms_version: LOAN_TERMS_VERSION,
             })

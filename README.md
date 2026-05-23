@@ -114,7 +114,7 @@ Detalhamento de um item antes do pedido: código de patrimônio, descrição, si
 
 <img src="docs/screenshots/08-solicitante-pedido-emprestimo-passo1.png" alt="Pedido passo 1" width="100%"/>
 
-Assistente em duas etapas. No **passo 1**, o solicitante define data e hora previstas para devolução. O pedido só segue após validação; em seguida permanece **pendente** até o administrador aprovar.
+Assistente em duas etapas. No **passo 1**, o solicitante define a **data de retirada** e a **data de devolução** (mínimo de 3 dias entre elas; não pode ser no mesmo dia). O pedido só segue após validação na interface e na API; em seguida permanece **pendente** até o administrador aprovar. A **retirada efetiva** só é registrada na aprovação.
 
 ---
 

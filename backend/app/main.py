@@ -148,6 +148,54 @@ def seed_if_empty():
                         description="Firmware em atualização e sondas em calibração. Previsão fictícia de retorno: próxima sprint.",
                         status=EquipmentStatus.manutencao,
                     ),
+                    Equipment(
+                        name="Impressora portátil térmica",
+                        inventory_code="PAT-LAB-032",
+                        description="Bluetooth e USB. Bobina de papel incluída. Ideal para etiquetas e comprovantes em eventos.",
+                        status=EquipmentStatus.disponivel,
+                    ),
+                    Equipment(
+                        name="Extensão elétrica 5 m (6 tomadas)",
+                        inventory_code="PAT-LAB-033",
+                        description="Com proteção contra surtos. Cabo em bom estado; não usar em carga acima de 10 A.",
+                        status=EquipmentStatus.disponivel,
+                    ),
+                    Equipment(
+                        name="Power bank 20.000 mAh USB-C",
+                        inventory_code="PAT-LAB-034",
+                        description="Carrega notebook e telemóvel. Cabo USB-C incluído. Verificar carga antes de retirar.",
+                        status=EquipmentStatus.disponivel,
+                    ),
+                    Equipment(
+                        name="Hub USB-C 7 em 1",
+                        inventory_code="PAT-LAB-035",
+                        description="HDMI, USB-A, leitor SD e Ethernet. Compatível com MacBook e portáteis USB-C.",
+                        status=EquipmentStatus.disponivel,
+                    ),
+                    Equipment(
+                        name="Gravador de voz digital",
+                        inventory_code="PAT-LAB-036",
+                        description="Memória interna ~32 h. Microfone omnidirecional. Pilhas AA no estojo.",
+                        status=EquipmentStatus.disponivel,
+                    ),
+                    Equipment(
+                        name="Gimbal para smartphone",
+                        inventory_code="PAT-LAB-037",
+                        description="Estabilização 3 eixos. App de controlo no QR do manual. Bateria carregada na base.",
+                        status=EquipmentStatus.disponivel,
+                    ),
+                    Equipment(
+                        name="Medidor de consumo (plug inteligente)",
+                        inventory_code="PAT-LAB-038",
+                        description="Demonstração de eficiência energética. Wi‑Fi 2,4 GHz; app de configuração no NRDT.",
+                        status=EquipmentStatus.disponivel,
+                    ),
+                    Equipment(
+                        name="Maleta de ferramentas básicas",
+                        inventory_code="PAT-LAB-039",
+                        description="Chaves, alicates, fita métrica e nível. Uso em montagem de stands e ajustes leves.",
+                        status=EquipmentStatus.disponivel,
+                    ),
                 ]
             )
             db.commit()

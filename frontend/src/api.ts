@@ -97,6 +97,7 @@ export const equipmentApi = {
 export const loansApi = {
   create: (
     equipment_id: number,
+    pickup_at: string,
     due_at: string,
     opts: { terms_accepted: boolean; terms_version: string },
   ) =>
@@ -104,6 +105,7 @@ export const loansApi = {
       method: 'POST',
       body: JSON.stringify({
         equipment_id,
+        pickup_at,
         due_at,
         terms_accepted: opts.terms_accepted,
         terms_version: opts.terms_version,

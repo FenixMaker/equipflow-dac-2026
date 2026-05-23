@@ -72,6 +72,7 @@ class EquipmentRead(BaseModel):
 
 class LoanCreate(BaseModel):
     equipment_id: int
+    pickup_at: datetime
     due_at: datetime
     terms_accepted: bool = False
     terms_version: str = Field(min_length=1, max_length=32)
@@ -92,7 +93,9 @@ class LoanRead(BaseModel):
     equipment_id: int
     borrower_id: int
     created_at: datetime
+    pickup_at: datetime
     due_at: datetime
+    approved_at: datetime | None
     returned_at: datetime | None
     status: LoanStatusEnum
     terms_accepted_at: datetime | None
