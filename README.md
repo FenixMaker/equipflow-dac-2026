@@ -38,7 +38,7 @@ O **EquipFlow** é um protótipo web full stack para o fluxo de **empréstimo e 
 | Perfil | O que pode fazer |
 |--------|------------------|
 | **Administrador** | Cadastrar e editar patrimônio · alterar situação (disponível / emprestado / manutenção) · aprovar ou recusar pedidos · acompanhar empréstimos ativos e histórico |
-| **Solicitante** | Consultar catálogo disponível · ver ficha do equipamento · solicitar empréstimo (prazo + termo) · registrar devolução · acompanhar pedidos |
+| **Solicitante** | Consultar catálogo disponível · ver ficha do equipamento · solicitar empréstimo (retirada + devolução, mín. 3 dias + termo) · registrar devolução · acompanhar pedidos |
 
 ### Fluxo resumido
 
@@ -122,7 +122,7 @@ Assistente em duas etapas. No **passo 1**, o solicitante define a **data de reti
 
 <img src="docs/screenshots/09-solicitante-pedido-emprestimo-passo2-termo.png" alt="Pedido passo 2 termo" width="100%"/>
 
-**Passo 2:** resumo do equipamento e do prazo, leitura do **termo de responsabilidade** (versão registrada) e checkbox de aceite. Só então o botão **Enviar pedido** é habilitado — garantindo rastreabilidade do aceite no protótipo.
+**Passo 2:** resumo do equipamento com **retirada e devolução previstas**, leitura do **termo de responsabilidade** (versão registrada) e checkbox de aceite. Só então o botão **Enviar pedido** é habilitado — garantindo rastreabilidade do aceite no protótipo.
 
 ---
 
@@ -305,7 +305,7 @@ Endpoints principais (autenticação via Bearer JWT):
 |-------|-------|
 | `auth` | `POST /auth/login` · `GET /auth/me` |
 | `equipment` | `GET/POST /equipment` · `PATCH /equipment/{id}` |
-| `loans` | `POST /loans` · `GET /loans/me` · aprovar / recusar / devolver |
+| `loans` | `POST /loans` (`pickup_at`, `due_at`) · `GET /loans/me` · aprovar / recusar / devolver |
 | `health` | `GET /health` |
 
 Documentação interativa: **http://127.0.0.1:8000/docs**
@@ -323,7 +323,9 @@ SECRET_KEY=sua-chave-secreta-longa
 DATABASE_URL=sqlite:///./data/equipflow.db
 ```
 
-**Recriar dados de demo:** apague `backend/data/equipflow.db` e suba a API novamente.
+**Recriar dados de demo:** apague `backend/data/equipflow.db` e suba a API novamente (necessário após alterações no modelo de empréstimos).
+
+**Atualizar capturas do pedido (prints 08 e 09):** com `npm run dev` ativo, execute `npm run screenshots:loan`.
 
 ---
 

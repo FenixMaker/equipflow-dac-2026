@@ -5,9 +5,11 @@
     "predev": "node scripts/ensure-frontend-env.cjs",
     "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "node scripts/run-backend.cjs",
-    "dev:web": "cd frontend && npm run dev"
+    "dev:web": "cd frontend && npm run dev",
+    "screenshots:loan": "node scripts/capture-loan-screenshots.mjs"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2"
+    "concurrently": "^9.1.2",
+    "playwright": "^1.52.0"
   }
 }

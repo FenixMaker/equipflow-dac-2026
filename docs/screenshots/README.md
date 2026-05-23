@@ -11,9 +11,11 @@ Arquivos PNG do protótipo EquipFlow em execução local.
 | [05-admin-emprestimos-ativos.png](05-admin-emprestimos-ativos.png) | Admin · empréstimos |
 | [06-solicitante-painel.png](06-solicitante-painel.png) | Solicitante · painel |
 | [07-solicitante-ficha-equipamento.png](07-solicitante-ficha-equipamento.png) | Solicitante · ficha |
-| [08-solicitante-pedido-emprestimo-passo1.png](08-solicitante-pedido-emprestimo-passo1.png) | Pedido · passo 1 |
-| [09-solicitante-pedido-emprestimo-passo2-termo.png](09-solicitante-pedido-emprestimo-passo2-termo.png) | Pedido · passo 2 |
+| [08-solicitante-pedido-emprestimo-passo1.png](08-solicitante-pedido-emprestimo-passo1.png) | Pedido · passo 1 (retirada e devolução previstas) |
+| [09-solicitante-pedido-emprestimo-passo2-termo.png](09-solicitante-pedido-emprestimo-passo2-termo.png) | Pedido · passo 2 (resumo das datas + termo) |
 | [10-api-swagger.png](10-api-swagger.png) | API Swagger |
+
+Para regenerar **08** e **09** após mudanças na interface: `npm run screenshots:loan` (requer API e Vite em execução).
 
 No [README principal](../../README.md):
 

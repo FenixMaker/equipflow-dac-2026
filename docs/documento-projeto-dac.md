@@ -38,7 +38,7 @@ O **EquipFlow** atende dois perfis distintos, com permissões separadas por aute
 | Perfil | Quem representa | O que precisa do sistema |
 |--------|-----------------|---------------------------|
 | **Administrador de patrimônio** | Coordenação do NRDT / responsável pelo acervo | Cadastrar e editar equipamentos (código de patrimônio, descrição); alterar situação (`disponível`, `emprestado`, `manutenção`); **aprovar ou recusar** pedidos pendentes; acompanhar empréstimos ativos, histórico e recusados; tomar decisões com base em indicadores consolidados. |
-| **Solicitante** | Docente ou estudante autorizado a retirar equipamentos | Consultar catálogo de itens **disponíveis**; visualizar ficha do equipamento; **solicitar empréstimo** com prazo de devolução e aceite de termo de responsabilidade; acompanhar pedidos (pendente, ativo, encerrado, recusado); **registrar devolução** quando for o tomador do empréstimo ativo. |
+| **Solicitante** | Docente ou estudante autorizado a retirar equipamentos | Consultar catálogo de itens **disponíveis**; visualizar ficha do equipamento; **solicitar empréstimo** informando data prevista de **retirada** e de **devolução** (mínimo de 3 dias entre elas) e aceite de termo de responsabilidade; acompanhar pedidos (pendente, ativo, encerrado, recusado); **registrar devolução** quando for o tomador do empréstimo ativo. |
 
 A separação de perfis (`admin` e `borrower`) reflete a realidade de equipes em laboratórios e núcleos de recursos: quem **governa o patrimônio** não executa as mesmas tarefas que quem **consome** o recurso, mas ambos precisam da mesma fonte de verdade sobre disponibilidade e prazos.
 
@@ -80,7 +80,7 @@ A integração foi estruturada para **eficiência, clareza de contrato e manuten
 
 4. **Segurança e papéis** — O back-end valida o JWT em rotas protegidas e aplica `require_admin` onde necessário (cadastro de patrimônio, aprovação de pedidos). O front-end redireciona a experiência conforme `user.role` após `GET /auth/me`.
 
-5. **Regras de negócio no servidor** — Bloqueios (item em manutenção, empréstimo pendente/ativo no mesmo patrimônio, versão do termo `2026-05`) são enforced na API, não apenas na interface — garantindo consistência mesmo com múltiplos clientes.
+5. **Regras de negócio no servidor** — Bloqueios (item em manutenção, empréstimo pendente/ativo no mesmo patrimônio, versão do termo `2026-05`, **validação de datas** de retirada/devolução com intervalo mínimo de 3 dias) são enforced na API, não apenas na interface — garantindo consistência mesmo com múltiplos clientes.
 
 Essa arquitetura **desacopla** apresentação e regra de negócio: a interface pode evoluir (novos painéis, relatórios) sem reescrever a API; a API pode atender outros clientes (aplicativo móvel, integração institucional) mantendo o mesmo contrato.
 
@@ -104,8 +104,8 @@ Essa arquitetura **desacopla** apresentação e regra de negócio: a interface p
 |---|----------------|-----------|---------------------|
 | **1** | **Autenticação e painéis por perfil** | Login com e-mail e senha; sessão JWT; painéis distintos para administrador e solicitante, com **indicadores (KPIs)**: disponíveis, pendentes, ativos, em atraso e histórico. Atualização manual e automática (~12 s) quando a aba está visível. | Visão imediata do estado do acervo e da fila de trabalho, sem planilhas paralelas. |
 | **2** | **Gestão de patrimônio** | Administrador cadastra equipamentos (nome, código de patrimônio, descrição), edita registros, busca no acervo e altera situação (`disponível`, `emprestado`, `manutenção`), com bloqueios quando há empréstimo pendente ou ativo. | Inventário único e confiável; manutenção registrada impede empréstimo indevido. |
-| **3** | **Catálogo e solicitação de empréstimo** | Solicitante consulta itens disponíveis, abre **ficha do equipamento** e usa assistente em **dois passos**: (1) prazo de devolução; (2) leitura e aceite do **termo de responsabilidade** (versão `2026-05`), com registro de data/versão no banco. | Pedido formal, padronizado e rastreável; reduz ambiguidade de “combinado por mensagem”. |
-| **4** | **Pipeline de aprovação** | Pedido criado como `pendente`; administrador **aprova** (→ `ativo`, equipamento `emprestado`) ou **recusa** (→ `recusado`); tomador registra **devolução** (→ `finalizado`, equipamento `disponível`). | Controle institucional antes da saída do patrimônio; histórico de recusas e encerramentos. |
+| **3** | **Catálogo e solicitação de empréstimo** | Solicitante consulta itens disponíveis, abre **ficha do equipamento** e usa assistente em **dois passos**: (1) datas previstas de **retirada** e **devolução** (mínimo 3 dias de calendário, validadas na interface e na API); (2) leitura e aceite do **termo de responsabilidade** (versão `2026-05`), com registro de data/versão no banco. | Pedido formal, padronizado e rastreável; reduz ambiguidade de “combinado por mensagem”. |
+| **4** | **Pipeline de aprovação** | Pedido criado como `pendente`; administrador **aprova** (→ `ativo`, equipamento `emprestado`, `approved_at` = retirada efetiva) ou **recusa** (→ `recusado`, sem retirada efetiva); tomador registra **devolução** (→ `finalizado`, equipamento `disponível`). | Controle institucional antes da saída do patrimônio; histórico de recusas e encerramentos. |
 | **5** | **Rastreabilidade e alertas operacionais** | Listagens de empréstimos por estado; histórico para auditoria mínima; **destaque visual** de empréstimos com prazo vencido (contagem “Em atraso” e linhas alertadas nas tabelas). | Antecipação de cobrança e priorização da coordenação; base para relatórios futuros. |
 
 **Fluxo operacional consolidado:**
@@ -133,7 +133,7 @@ Esses recursos demonstram que a solução foi pensada não só para quem opera o
 
 - **Usuario:** id, e-mail, nome, senha (hash), papel (`admin` | `borrower`).
 - **Equipamento:** id, nome, código de patrimônio (único), descrição opcional, status (`disponivel` | `emprestado` | `manutencao`).
-- **Emprestimo:** id, equipamento_id, borrower_id, criado_em, devolucao_prevista_em, devolvido_em (opcional), status (`pendente` | `ativo` | `finalizado` | `recusado`), aceite do termo (data e versão).
+- **Emprestimo:** id, equipamento_id, borrower_id, `created_at` (pedido), `pickup_at` (retirada prevista), `due_at` (devolução prevista), `approved_at` (retirada efetiva, preenchido na aprovação), `returned_at` (opcional), status (`pendente` | `ativo` | `finalizado` | `recusado`), aceite do termo (data e versão).
 
 ---
 

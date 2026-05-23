@@ -221,7 +221,7 @@ export function BorrowerDashboard() {
                 <strong>Ver ficha:</strong> descrição completa e código de patrimônio antes de solicitar.
               </li>
               <li>
-                <strong>Solicitar empréstimo:</strong> primeiro define o prazo; o termo aparece só ao concluir.
+                <strong>Solicitar empréstimo:</strong> define retirada e devolução (mín. 3 dias); o termo aparece no passo 2.
               </li>
               <li>
                 A lista <strong>atualiza sozinha</strong> a cada ~12&nbsp;s com o separador visível; use <strong>Atualizar</strong> para
@@ -253,7 +253,7 @@ export function BorrowerDashboard() {
           <ol className="info-checklist">
             <li>
               Consulte a <strong>ficha completa</strong> do equipamento antes de pedir; o assistente de empréstimo
-              abre em dois passos: primeiro o <strong>prazo</strong>, depois o <strong>termo</strong> só ao finalizar.
+              abre em dois passos: primeiro as <strong>datas previstas</strong>, depois o <strong>termo</strong> só ao finalizar.
             </li>
             <li>
               Após enviar o pedido, acompanhe a secção <strong>Aguardando aprovação</strong> até o administrador decidir.
@@ -283,10 +283,10 @@ export function BorrowerDashboard() {
         <h3 id="avail-title">Equipamentos disponíveis para empréstimo</h3>
         <p id="catalog-hint" className="field-hint">
           Cada linha mostra um <strong>resumo</strong> do item. Use <strong>Ver ficha</strong> para descrição completa e
-          dados de património. Use <strong>Solicitar empréstimo</strong> para abrir o assistente: no passo 1 define a
-          data de devolução; o <strong>termo de responsabilidade</strong> só aparece no passo 2, quando estiver a
-          concluir o pedido. O fuso horário é o do navegador; após enviar, o estado fica <strong>pendente</strong> até
-          o NRDT aprovar.
+          dados de património. Use <strong>Solicitar empréstimo</strong> para abrir o assistente: no passo 1 escolhe a
+          <strong>data de retirada</strong> e a <strong>data de devolução</strong> (intervalo mínimo de 3 dias); o{' '}
+          <strong>termo de responsabilidade</strong> só aparece no passo 2. Após enviar, o estado fica{' '}
+          <strong>pendente</strong> até o NRDT aprovar; a retirada efetiva só é registrada na aprovação.
         </p>
         {!hasLoadedOnce && err ? (
           <p className="muted section-retry-hint">Não foi possível carregar o acervo.</p>
