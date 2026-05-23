@@ -1,16 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
 import QRCode from 'qrcode'
 import { api } from '../api'
-import { buildLanPageUrl, isLoopbackHost, pickPreferredLanAddress } from '../utils/lanUrl'
+import {
+  buildLanHealthUrl,
+  buildLanPageUrl,
+  interfaceOptionLabel,
+  isLoopbackHost,
+  pickPreferredLanAddress,
+  type LanInterface,
+} from '../utils/lanUrl'
 
-type HealthLan = { status: string; lan_addresses?: string[] }
+type HealthLan = {
+  status: string
+  lan_addresses?: string[]
+  lan_interfaces?: LanInterface[]
+  lan_recommended?: string | null
+}
+
+type ReachStatus = 'idle' | 'checking' | 'ok' | 'fail'
 
 export function LoginQrPanel() {
   const [dataUrl, setDataUrl] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
-  const [lanAddresses, setLanAddresses] = useState<string[]>([])
+  const [lanInterfaces, setLanInterfaces] = useState<LanInterface[]>([])
   const [selectedIp, setSelectedIp] = useState<string | null>(null)
   const [loadingLan, setLoadingLan] = useState(true)
+  const [reachStatus, setReachStatus] = useState<ReachStatus>('idle')
+  const [reachDetail, setReachDetail] = useState<string | null>(null)
 
   const loc = typeof window !== 'undefined' ? window.location : null
   const hostname = loc?.hostname ?? ''
@@ -24,16 +40,17 @@ export function LoginQrPanel() {
       .then((h) => {
         if (cancelled) return
         const addrs = h.lan_addresses ?? []
-        setLanAddresses(addrs)
+        const ifaces = h.lan_interfaces ?? []
+        setLanInterfaces(ifaces)
         if (onLoopback) {
-          setSelectedIp(pickPreferredLanAddress(addrs))
+          setSelectedIp(pickPreferredLanAddress(addrs, ifaces, h.lan_recommended ?? null))
         } else if (hostname) {
           setSelectedIp(hostname)
         }
       })
       .catch(() => {
         if (!cancelled) {
-          setLanAddresses([])
+          setLanInterfaces([])
           if (!onLoopback && hostname) setSelectedIp(hostname)
         }
       })
@@ -78,7 +95,51 @@ export function LoginQrPanel() {
     }
   }, [qrTargetUrl])
 
+  useEffect(() => {
+    if (!loc || !selectedIp || !onLoopback) {
+      setReachStatus('idle')
+      setReachDetail(null)
+      return
+    }
+    let cancelled = false
+    const ctrl = new AbortController()
+    setReachStatus('checking')
+    setReachDetail(null)
+    const testUrl = buildLanHealthUrl(selectedIp, loc)
+    const timer = window.setTimeout(() => ctrl.abort(), 5000)
+    void fetch(testUrl, { signal: ctrl.signal })
+      .then((r) => {
+        if (cancelled) return
+        if (r.ok) {
+          setReachStatus('ok')
+          setReachDetail('Este PC respondeu na rede — o celular deve conseguir abrir o mesmo endereço do QR.')
+        } else {
+          setReachStatus('fail')
+          setReachDetail(
+            'O PC não respondeu neste IP/porta. Libere as portas 5173 e 8000 no firewall do Windows (rede privada) ou escolha outro IP.',
+          )
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setReachStatus('fail')
+          setReachDetail(
+            'Não foi possível alcançar o Vite neste IP. Execute scripts\\liberar-firewall-windows.ps1 como administrador ou abra o site pelo endereço Network do terminal.',
+          )
+        }
+      })
+      .finally(() => {
+        window.clearTimeout(timer)
+      })
+    return () => {
+      cancelled = true
+      ctrl.abort()
+      window.clearTimeout(timer)
+    }
+  }, [loc, selectedIp, onLoopback])
+
   const noLanForQr = onLoopback && !loadingLan && !selectedIp
+  const showIpPicker = onLoopback && lanInterfaces.length > 0
 
   return (
     <section className="login-qr" aria-labelledby="login-qr-title">
@@ -86,20 +147,21 @@ export function LoginQrPanel() {
         Abrir no celular (mesma rede)
       </h2>
       <p className="login-qr-lede muted tiny">
-        Escaneie com a câmera do celular. O PC e o celular devem estar na <strong>mesma rede local</strong> (Wi‑Fi ou
-        cabo/Ethernet no mesmo roteador). Suba a API com{' '}
-        <code className="login-qr-code">uvicorn app.main:app --reload --host 0.0.0.0 --port 8000</code>.
+        Escaneie com a câmera do celular. O PC e o celular devem estar na <strong>mesma rede local</strong> (celular no
+        Wi‑Fi do mesmo roteador em que o PC está no cabo, ou ambos no Wi‑Fi). A API deve estar em{' '}
+        <code className="login-qr-code">0.0.0.0:8000</code> (padrão do <code className="login-qr-code">npm run dev</code>
+        ).
       </p>
       {onLoopback ? (
         <p className="login-qr-warn tiny" role="status">
-          Você abriu por <strong>localhost</strong> — o QR usa o IP deste computador na rede para o celular alcançar o
-          Vite e a API via proxy.
+          Você abriu por <strong>localhost</strong> — o QR aponta para o IP do PC na rede (prioriza{' '}
+          <strong>cabo/Ethernet</strong> quando detectado).
         </p>
       ) : null}
-      {lanAddresses.length > 1 ? (
+      {showIpPicker ? (
         <div className="login-qr-pick">
           <label htmlFor="login-qr-ip" className="tiny">
-            IP deste PC na rede
+            IP deste PC na rede (use o do cabo se o PC estiver em Ethernet)
           </label>
           <select
             id="login-qr-ip"
@@ -107,18 +169,33 @@ export function LoginQrPanel() {
             value={selectedIp ?? ''}
             onChange={(e) => setSelectedIp(e.target.value || null)}
           >
-            {lanAddresses.map((ip) => (
-              <option key={ip} value={ip}>
-                {ip}
+            {lanInterfaces.map((iface) => (
+              <option key={iface.ip} value={iface.ip}>
+                {interfaceOptionLabel(iface)}
               </option>
             ))}
           </select>
         </div>
       ) : null}
+      {reachStatus === 'checking' ? (
+        <p className="muted tiny login-qr-reach" role="status">
+          Testando se o Vite responde neste IP…
+        </p>
+      ) : null}
+      {reachStatus === 'ok' && reachDetail ? (
+        <p className="login-qr-ok tiny" role="status">
+          {reachDetail}
+        </p>
+      ) : null}
+      {reachStatus === 'fail' && reachDetail ? (
+        <p className="login-qr-warn tiny" role="alert">
+          {reachDetail}
+        </p>
+      ) : null}
       {noLanForQr ? (
         <p className="login-qr-warn tiny" role="alert">
-          Não foi possível detectar um IP na rede. Abra o site pelo endereço <strong>Network</strong> do Vite (ex.{' '}
-          <code className="login-qr-code">http://192.168.x.x:5173</code>) ou verifique cabo/Wi‑Fi e firewall.
+          Não foi possível detectar um IP na rede. Conecte o cabo ou Wi‑Fi, abra{' '}
+          <code className="login-qr-code">http://SEU_IP:5173</code> no próprio PC (URL Network do Vite) e recarregue.
         </p>
       ) : null}
       <div className="login-qr-box">
@@ -137,7 +214,9 @@ export function LoginQrPanel() {
       </div>
       {qrTargetUrl ? (
         <p className="muted tiny login-qr-url" title={qrTargetUrl}>
-          {qrTargetUrl}
+          <a href={qrTargetUrl} target="_blank" rel="noreferrer" className="login-qr-link">
+            {qrTargetUrl}
+          </a>
         </p>
       ) : null}
     </section>

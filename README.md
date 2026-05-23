@@ -279,7 +279,8 @@ npm run dev
 2. Na tela de login, o **QR code** usa o IP LAN do PC (funciona com Wi‑Fi ou cabo/Ethernet). Se abrir por `localhost`, o sistema detecta o IP automaticamente via `/health`.
 3. Com mais de uma placa de rede, escolha o IP correto no seletor abaixo do QR.
 4. O proxy do Vite encaminha `/auth`, `/equipment`, `/loans` e `/health` para a API no PC.
-5. Libere as portas **5173** e **8000** no firewall (rede privada), se necessário.
+5. **PC no cabo e celular no Wi‑Fi:** use o Wi‑Fi da rede principal (não “convidado”); o QR prioriza o IP do adaptador **Ethernet**.
+6. Se o celular mostrar “não foi possível acessar”, no PC execute como administrador: `powershell -ExecutionPolicy Bypass -File scripts\liberar-firewall-windows.ps1` e teste o link abaixo do QR no próprio PC.
 
 Em **build de produção** (`npm run build`), configure `VITE_API_URL` com a URL pública da API.
 

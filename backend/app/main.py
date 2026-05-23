@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, SessionLocal, engine
 from app.models import Equipment, EquipmentStatus, User, UserRole
 from app.auth_utils import hash_password
-from app.lan_hosts import get_lan_ipv4_addresses
+from app.lan_hosts import get_lan_interfaces, get_lan_ipv4_addresses, pick_recommended_lan_ip
 from app.routers import auth, equipment, loans
 
 
@@ -240,4 +240,10 @@ app.include_router(loans.router)
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "lan_addresses": get_lan_ipv4_addresses()}
+    interfaces = get_lan_interfaces()
+    return {
+        "status": "ok",
+        "lan_addresses": get_lan_ipv4_addresses(),
+        "lan_interfaces": interfaces,
+        "lan_recommended": pick_recommended_lan_ip(),
+    }
