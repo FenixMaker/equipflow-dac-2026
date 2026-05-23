@@ -58,7 +58,7 @@ Cada captura abaixo mostra uma parte do protótipo e o que ela representa no flu
 
 <img src="docs/screenshots/01-login-claro.png" alt="Login tema claro" width="100%"/>
 
-Ponto de entrada do sistema. O docente ou o administrador informa e-mail e senha; há atalhos para preencher as **contas de demonstração** e alternância para o **tema escuro**. O painel lateral traz o logotipo do EquipFlow e, na parte inferior, o bloco **Abrir no celular** com QR para teste na mesma rede Wi‑Fi.
+Ponto de entrada do sistema. O docente ou o administrador informa e-mail e senha; há atalhos para preencher as **contas de demonstração** e alternância para o **tema escuro**. O painel lateral traz o logotipo do EquipFlow e, na parte inferior, o bloco **Abrir no celular** com QR para teste na mesma rede local (Wi‑Fi ou cabo).
 
 ---
 
@@ -271,14 +271,15 @@ npm run dev
 </details>
 
 <details>
-<summary><b>Testar no celular</b> (mesma rede Wi‑Fi)</summary>
+<summary><b>Testar no celular</b> (mesma rede — Wi‑Fi ou cabo)</summary>
 
 <br/>
 
 1. Suba o projeto com `npm run dev` (API em `0.0.0.0:8000`, Vite em `0.0.0.0:5173`).
-2. No terminal do Vite, use a URL **Network** (ex.: `http://192.168.x.x:5173`).
-3. O proxy do Vite encaminha `/auth`, `/equipment`, `/loans` e `/health` para a API no PC.
-4. Libere as portas **5173** e **8000** no firewall (rede privada), se necessário.
+2. Na tela de login, o **QR code** usa o IP LAN do PC (funciona com Wi‑Fi ou cabo/Ethernet). Se abrir por `localhost`, o sistema detecta o IP automaticamente via `/health`.
+3. Com mais de uma placa de rede, escolha o IP correto no seletor abaixo do QR.
+4. O proxy do Vite encaminha `/auth`, `/equipment`, `/loans` e `/health` para a API no PC.
+5. Libere as portas **5173** e **8000** no firewall (rede privada), se necessário.
 
 Em **build de produção** (`npm run build`), configure `VITE_API_URL` com a URL pública da API.
 
