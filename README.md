@@ -56,7 +56,7 @@ Cada captura abaixo mostra uma parte do protótipo e o que ela representa no flu
 
 ### 1. Login — tema claro
 
-<img src="docs/screenshots/01-login-claro.png?v=20260525" alt="Tela de login do EquipFlow no tema claro, com carrossel de perfis de demonstração" width="100%"/>
+<img src="docs/screenshots/01-login-claro.png?v=20260525-2154" alt="Tela de login do EquipFlow no tema claro, com carrossel de perfis de demonstração" width="100%"/>
 
 Ponto de entrada do sistema. À esquerda, logotipo e **QR code** para abrir no celular na mesma rede (IP LAN configurável). À direita, o **carrossel de perfis** com ícone azul (administrador + escudo) ou ciano (solicitante), rótulos **Administrador** / **Solicitante** e botão **Entrar como Conta Selecionada**; abaixo, formulário de e-mail e senha. Alternância **tema claro/escuro** no canto superior.
 
@@ -64,7 +64,7 @@ Ponto de entrada do sistema. À esquerda, logotipo e **QR code** para abrir no c
 
 ### 2. Login — tema escuro
 
-<img src="docs/screenshots/02-login-escuro.png?v=20260525" alt="Tela de login do EquipFlow no tema escuro" width="100%"/>
+<img src="docs/screenshots/02-login-escuro.png?v=20260525-2154" alt="Tela de login do EquipFlow no tema escuro" width="100%"/>
 
 Mesma tela com paleta escura no painel de entrada (preferência salva no navegador). O carrossel e o QR mantêm o mesmo fluxo de demonstração.
 
@@ -72,7 +72,7 @@ Mesma tela com paleta escura no painel de entrada (preferência salva no navegad
 
 ### 3. Painel do administrador
 
-<img src="docs/screenshots/03-admin-painel.png?v=20260525" alt="Painel do administrador com KPIs, filas de pedidos e acervo" width="100%"/>
+<img src="docs/screenshots/03-admin-painel.png?v=20260525-2154" alt="Painel do administrador com KPIs, filas de pedidos e acervo" width="100%"/>
 
 Visão da **coordenação do NRDT**: cabeçalho com badge *Administração*, resumo do acervo e botão **Atualizar dados**; faixa de **KPIs** (itens, disponíveis, pendentes, ativos, em atraso com multa R$ 15/dia); filas **Solicitações pendentes** e **Empréstimos ativos** empilhadas; barras de **distribuição do acervo**; cadastro e tabela de patrimônio com busca.
 
@@ -80,7 +80,7 @@ Visão da **coordenação do NRDT**: cabeçalho com badge *Administração*, res
 
 ### 4. Editar equipamento
 
-<img src="docs/screenshots/04-admin-editar-equipamento.png?v=20260525" alt="Editar equipamento" width="100%"/>
+<img src="docs/screenshots/04-admin-editar-equipamento.png?v=20260525-2154" alt="Editar equipamento" width="100%"/>
 
 Modal aberto a partir da coluna **Editar** na tabela de patrimônio. Permite corrigir nome, código de patrimônio e observações sem apagar o histórico de empréstimos vinculado ao item.
 
@@ -88,7 +88,7 @@ Modal aberto a partir da coluna **Editar** na tabela de patrimônio. Permite cor
 
 ### 5. Filas de pedidos (admin)
 
-<img src="docs/screenshots/05-admin-emprestimos-ativos.png?v=20260525" alt="Filas de solicitações pendentes e empréstimos ativos no painel admin" width="100%"/>
+<img src="docs/screenshots/05-admin-emprestimos-ativos.png?v=20260525-2154" alt="Filas de solicitações pendentes e empréstimos ativos no painel admin" width="100%"/>
 
 Detalhe das duas filas em coluna: **aprovar/recusar** pedidos novos (retirada e devolução previstas) e acompanhar **empréstimos ativos** com atraso, multa acumulada, status **Bloqueado** e ação **Notificar** o tomador.
 
@@ -96,7 +96,7 @@ Detalhe das duas filas em coluna: **aprovar/recusar** pedidos novos (retirada e 
 
 ### 6. Painel do solicitante
 
-<img src="docs/screenshots/06-solicitante-painel.png?v=20260525" alt="Painel do solicitante com KPIs e catálogo em cards" width="100%"/>
+<img src="docs/screenshots/06-solicitante-painel.png?v=20260525-2154" alt="Painel do solicitante com KPIs e catálogo em cards" width="100%"/>
 
 Área do **solicitante** (docente ou aluno): badge *Solicitante*, KPIs (disponíveis, aguardando aprovação, ativos, em atraso) e **catálogo em cards** com patrimônio, resumo e botões **Ver ficha** / **Solicitar empréstimo**. Aviso de atraso e notificações do NRDT aparecem no topo quando aplicável.
 
@@ -104,7 +104,7 @@ Detalhe das duas filas em coluna: **aprovar/recusar** pedidos novos (retirada e 
 
 ### 7. Ficha do patrimônio
 
-<img src="docs/screenshots/07-solicitante-ficha-equipamento.png?v=20260525" alt="Ficha do equipamento" width="100%"/>
+<img src="docs/screenshots/07-solicitante-ficha-equipamento.png?v=20260525-2154" alt="Ficha do equipamento" width="100%"/>
 
 Detalhamento de um item antes do pedido: código de patrimônio, descrição, situação no catálogo e aviso de que, em produção, poderia incluir fotos e manual. Abre pelo botão **Ver ficha** no catálogo.
 
@@ -112,7 +112,7 @@ Detalhamento de um item antes do pedido: código de patrimônio, descrição, si
 
 ### 8. Pedido de empréstimo — passo 1 (prazo)
 
-<img src="docs/screenshots/08-solicitante-pedido-emprestimo-passo1.png?v=20260525" alt="Pedido passo 1" width="100%"/>
+<img src="docs/screenshots/08-solicitante-pedido-emprestimo-passo1.png?v=20260525-2154" alt="Pedido passo 1" width="100%"/>
 
 Assistente em duas etapas. No **passo 1**, o solicitante define a **data de retirada** e a **data de devolução** (mínimo de 3 dias entre elas; não pode ser no mesmo dia). O pedido só segue após validação na interface e na API; em seguida permanece **pendente** até o administrador aprovar. A **retirada efetiva** só é registrada na aprovação.
 
@@ -120,7 +120,7 @@ Assistente em duas etapas. No **passo 1**, o solicitante define a **data de reti
 
 ### 9. Pedido de empréstimo — passo 2 (termo)
 
-<img src="docs/screenshots/09-solicitante-pedido-emprestimo-passo2-termo.png?v=20260525" alt="Pedido passo 2 termo" width="100%"/>
+<img src="docs/screenshots/09-solicitante-pedido-emprestimo-passo2-termo.png?v=20260525-2154" alt="Pedido passo 2 termo" width="100%"/>
 
 **Passo 2:** resumo do equipamento com **retirada e devolução previstas**, leitura do **termo de responsabilidade** (versão registrada) e checkbox de aceite. Só então o botão **Enviar pedido** é habilitado — garantindo rastreabilidade do aceite no protótipo.
 
@@ -128,7 +128,7 @@ Assistente em duas etapas. No **passo 1**, o solicitante define a **data de reti
 
 ### 10. Documentação da API (Swagger)
 
-<img src="docs/screenshots/10-api-swagger.png?v=20260525" alt="Swagger UI" width="100%"/>
+<img src="docs/screenshots/10-api-swagger.png?v=20260525-2154" alt="Swagger UI" width="100%"/>
 
 Interface automática do **FastAPI** em `/docs`. Lista rotas de autenticação, equipamentos e empréstimos, com esquemas JSON — útil para alinhar o relatório DAC e demonstrar a camada REST por trás do React.
 
@@ -141,49 +141,49 @@ Todas as capturas do protótipo, em ordem, para consulta rápida ou uso em slide
 <table>
   <tr>
     <td align="center" width="33%">
-      <a href="docs/screenshots/01-login-claro.png?v=20260525"><img src="docs/screenshots/01-login-claro.png?v=20260525" alt="01" width="100%"/></a><br/>
+      <a href="docs/screenshots/01-login-claro.png?v=20260525-2154"><img src="docs/screenshots/01-login-claro.png?v=20260525-2154" alt="01" width="100%"/></a><br/>
       <sub><b>01</b> · Login claro</sub>
     </td>
     <td align="center" width="33%">
-      <a href="docs/screenshots/02-login-escuro.png?v=20260525"><img src="docs/screenshots/02-login-escuro.png?v=20260525" alt="02" width="100%"/></a><br/>
+      <a href="docs/screenshots/02-login-escuro.png?v=20260525-2154"><img src="docs/screenshots/02-login-escuro.png?v=20260525-2154" alt="02" width="100%"/></a><br/>
       <sub><b>02</b> · Login escuro</sub>
     </td>
     <td align="center" width="33%">
-      <a href="docs/screenshots/03-admin-painel.png?v=20260525"><img src="docs/screenshots/03-admin-painel.png?v=20260525" alt="03" width="100%"/></a><br/>
+      <a href="docs/screenshots/03-admin-painel.png?v=20260525-2154"><img src="docs/screenshots/03-admin-painel.png?v=20260525-2154" alt="03" width="100%"/></a><br/>
       <sub><b>03</b> · Admin · painel</sub>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <a href="docs/screenshots/04-admin-editar-equipamento.png?v=20260525"><img src="docs/screenshots/04-admin-editar-equipamento.png?v=20260525" alt="04" width="100%"/></a><br/>
+      <a href="docs/screenshots/04-admin-editar-equipamento.png?v=20260525-2154"><img src="docs/screenshots/04-admin-editar-equipamento.png?v=20260525-2154" alt="04" width="100%"/></a><br/>
       <sub><b>04</b> · Admin · editar</sub>
     </td>
     <td align="center">
-      <a href="docs/screenshots/05-admin-emprestimos-ativos.png?v=20260525"><img src="docs/screenshots/05-admin-emprestimos-ativos.png?v=20260525" alt="05" width="100%"/></a><br/>
+      <a href="docs/screenshots/05-admin-emprestimos-ativos.png?v=20260525-2154"><img src="docs/screenshots/05-admin-emprestimos-ativos.png?v=20260525-2154" alt="05" width="100%"/></a><br/>
       <sub><b>05</b> · Admin · filas</sub>
     </td>
     <td align="center">
-      <a href="docs/screenshots/06-solicitante-painel.png?v=20260525"><img src="docs/screenshots/06-solicitante-painel.png?v=20260525" alt="06" width="100%"/></a><br/>
+      <a href="docs/screenshots/06-solicitante-painel.png?v=20260525-2154"><img src="docs/screenshots/06-solicitante-painel.png?v=20260525-2154" alt="06" width="100%"/></a><br/>
       <sub><b>06</b> · Solicitante · painel</sub>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <a href="docs/screenshots/07-solicitante-ficha-equipamento.png?v=20260525"><img src="docs/screenshots/07-solicitante-ficha-equipamento.png?v=20260525" alt="07" width="100%"/></a><br/>
+      <a href="docs/screenshots/07-solicitante-ficha-equipamento.png?v=20260525-2154"><img src="docs/screenshots/07-solicitante-ficha-equipamento.png?v=20260525-2154" alt="07" width="100%"/></a><br/>
       <sub><b>07</b> · Solicitante · ficha</sub>
     </td>
     <td align="center">
-      <a href="docs/screenshots/08-solicitante-pedido-emprestimo-passo1.png?v=20260525"><img src="docs/screenshots/08-solicitante-pedido-emprestimo-passo1.png?v=20260525" alt="08" width="100%"/></a><br/>
+      <a href="docs/screenshots/08-solicitante-pedido-emprestimo-passo1.png?v=20260525-2154"><img src="docs/screenshots/08-solicitante-pedido-emprestimo-passo1.png?v=20260525-2154" alt="08" width="100%"/></a><br/>
       <sub><b>08</b> · Pedido · passo 1</sub>
     </td>
     <td align="center">
-      <a href="docs/screenshots/09-solicitante-pedido-emprestimo-passo2-termo.png?v=20260525"><img src="docs/screenshots/09-solicitante-pedido-emprestimo-passo2-termo.png?v=20260525" alt="09" width="100%"/></a><br/>
+      <a href="docs/screenshots/09-solicitante-pedido-emprestimo-passo2-termo.png?v=20260525-2154"><img src="docs/screenshots/09-solicitante-pedido-emprestimo-passo2-termo.png?v=20260525-2154" alt="09" width="100%"/></a><br/>
       <sub><b>09</b> · Pedido · passo 2</sub>
     </td>
   </tr>
   <tr>
     <td align="center" colspan="3">
-      <a href="docs/screenshots/10-api-swagger.png?v=20260525"><img src="docs/screenshots/10-api-swagger.png?v=20260525" alt="10" width="48%"/></a><br/>
+      <a href="docs/screenshots/10-api-swagger.png?v=20260525-2154"><img src="docs/screenshots/10-api-swagger.png?v=20260525-2154" alt="10" width="48%"/></a><br/>
       <sub><b>10</b> · API Swagger</sub>
     </td>
   </tr>
