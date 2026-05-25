@@ -1,3 +1,5 @@
+import path from 'node:path'
+import tailwindcss from '@tailwindcss/vite'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -5,7 +7,12 @@ import react from '@vitejs/plugin-react'
 const apiTarget = 'http://127.0.0.1:8000'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   server: {
     // 0.0.0.0: aceita celular na LAN (Wi‑Fi ou cabo/Ethernet no mesmo roteador)
     host: '0.0.0.0',
@@ -19,6 +26,7 @@ export default defineConfig({
       '/auth': { target: apiTarget, changeOrigin: true },
       '/equipment': { target: apiTarget, changeOrigin: true },
       '/loans': { target: apiTarget, changeOrigin: true },
+      '/notifications': { target: apiTarget, changeOrigin: true },
       '/health': { target: apiTarget, changeOrigin: true },
     },
   },

@@ -1,15 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { equipmentApi, loansApi } from '../api'
+import { equipmentApi, loansApi, notificationsApi } from '../api'
+import type { LoanNotification } from '../types'
+import { BORROWER_BUSINESS_RULES } from '../constants/businessRules'
 import { LOAN_TERMS_VERSION } from '../constants/terms'
-import { EQUIPMENT_STATUS_LABELS } from '../labels/equipmentStatus'
 import type { Equipment, Loan } from '../types'
-import { CatalogEquipmentRow } from './CatalogEquipmentRow'
+import { BusinessRulesPanel } from './BusinessRulesPanel'
 import { ConfirmDialog } from './ConfirmDialog'
+import { EmptyState } from './dashboard/EmptyState'
+import { EquipmentCatalogCard } from './dashboard/EquipmentCatalogCard'
+import { KpiStrip } from './dashboard/KpiStrip'
+import { PageAlerts } from './dashboard/PageAlerts'
+import { PageHeader } from './dashboard/PageHeader'
+import {
+  DataCardFooter,
+  DataCardRow,
+  ResponsiveDataView,
+} from './dashboard/ResponsiveDataView'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { DashboardLayout } from './dashboard/DashboardLayout'
+import { SectionCard } from './dashboard/SectionCard'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { EquipmentDetailDialog } from './EquipmentDetailDialog'
 import { LoanRequestDialog } from './LoanRequestDialog'
 import { LoanSituationPill } from './StatusPill'
-import { dateInputToUtcIso, fmtApprovedAt, fmtDateOnly, fmtDateTime, isLoanOverdue } from '../utils/date'
+import { FINE_PER_DAY_BRL } from '../constants/overdue'
+import { dateInputToUtcIso, fmtDateOnly, fmtDateTime } from '../utils/date'
+import { fmtBrl, loanEquipmentBlocked, loanFineAmount, loanIsOverdue, totalOverdueFine } from '../utils/overdue'
 
 const POLL_MS = 12_000
 
@@ -27,15 +44,21 @@ export function BorrowerDashboard() {
   const [returnBusy, setReturnBusy] = useState(false)
   const [detailEquipment, setDetailEquipment] = useState<Equipment | null>(null)
   const [requestEquipment, setRequestEquipment] = useState<Equipment | null>(null)
+  const [notifications, setNotifications] = useState<LoanNotification[]>([])
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     const silent = opts?.silent ?? false
     if (!silent) setErr(null)
     if (silent) setRefreshing(true)
     try {
-      const [a, m] = await Promise.all([equipmentApi.list('disponivel'), loansApi.mine()])
+      const [a, m, notes] = await Promise.all([
+        equipmentApi.list('disponivel'),
+        loansApi.mine(),
+        notificationsApi.mine(),
+      ])
       setAvailable(a)
       setMine(m)
+      setNotifications(notes)
       setHasLoadedOnce(true)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Erro ao carregar dados')
@@ -73,9 +96,32 @@ export function BorrowerDashboard() {
   )
 
   const overdueCount = useMemo(
-    () => activeLoans.filter((l) => isLoanOverdue(l.due_at, l.status)).length,
+    () => activeLoans.filter((l) => loanIsOverdue(l)).length,
     [activeLoans],
   )
+
+  const borrowerBlocked = useMemo(
+    () => mine.some((l) => l.borrower_blocked) || overdueCount > 0,
+    [mine, overdueCount],
+  )
+
+  const totalFine = useMemo(() => totalOverdueFine(activeLoans), [activeLoans])
+
+  const unreadNotifications = useMemo(
+    () => notifications.filter((n) => !n.read_at),
+    [notifications],
+  )
+
+  async function markNotificationRead(id: number) {
+    try {
+      await notificationsApi.markRead(id)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)),
+      )
+    } catch {
+      /* silencioso — lista atualiza no próximo poll */
+    }
+  }
 
   async function confirmReturn() {
     if (!returnConfirm) return
@@ -94,410 +140,386 @@ export function BorrowerDashboard() {
     }
   }
 
+  const headerSubtitle = `${
+    available.length === 0
+      ? 'Nenhum equipamento disponível para novo pedido'
+      : available.length === 1
+        ? '1 equipamento disponível para novo pedido'
+        : `${available.length} equipamentos disponíveis para novo pedido`
+  } · ${
+    pendingLoans.length === 0
+      ? 'nenhuma solicitação aguardando aprovação'
+      : pendingLoans.length === 1
+        ? '1 solicitação aguardando aprovação'
+        : `${pendingLoans.length} solicitações aguardando aprovação`
+  } · ${
+    activeLoans.length === 0
+      ? 'nenhum empréstimo ativo'
+      : activeLoans.length === 1
+        ? '1 empréstimo ativo'
+        : `${activeLoans.length} empréstimos ativos`
+  }`
+
+  const kpiItems = useMemo(
+    () => [
+      {
+        label: 'Disponíveis agora',
+        value: available.length,
+        hint: 'Itens que aceitam novo pedido',
+        variant: 'ok' as const,
+      },
+      {
+        label: 'Aguardando aprovação',
+        value: pendingLoans.length,
+        hint: 'Pedidos enviados ao administrador',
+        variant: pendingLoans.length ? ('warn' as const) : ('default' as const),
+      },
+      {
+        label: 'Empréstimos ativos',
+        value: activeLoans.length,
+        hint: 'Em uso após aprovação',
+      },
+      {
+        label: 'Em atraso',
+        value: overdueCount,
+        hint: overdueCount > 0 ? `Multa ${fmtBrl(totalFine)} · bloqueio ativo` : 'Prazo ultrapassado',
+        variant: overdueCount ? ('danger' as const) : ('default' as const),
+      },
+    ],
+    [available.length, pendingLoans.length, activeLoans.length, overdueCount, totalFine],
+  )
+
   if (loading) {
-    return <DashboardSkeleton />
+    return <DashboardSkeleton variant="borrower" />
   }
 
   return (
-    <div className="stack gap-lg">
-      <header className="page-intro page-intro-row">
-        <div>
-          <h2>Empréstimos e devoluções</h2>
-          <p className="muted">
-            {available.length === 0
-              ? 'Nenhum equipamento disponível para novo pedido'
-              : available.length === 1
-                ? '1 equipamento disponível para novo pedido'
-                : `${available.length} equipamentos disponíveis para novo pedido`}
-            {' · '}
-            {(() => {
-              const p = pendingLoans.length
-              if (p === 0) return 'nenhuma solicitação aguardando aprovação'
-              if (p === 1) return '1 solicitação aguardando aprovação'
-              return `${p} solicitações aguardando aprovação`
-            })()}
-            {' · '}
-            {(() => {
-              const n = activeLoans.length
-              if (n === 0) return 'nenhum empréstimo ativo'
-              if (n === 1) return '1 empréstimo ativo'
-              return `${n} empréstimos ativos`
-            })()}
-          </p>
-        </div>
-        <div className="page-intro-actions">
-          <button
-            type="button"
-            className="btn"
-            onClick={() => void load({ silent: true })}
-            disabled={refreshing}
-            aria-busy={refreshing}
-          >
-            {refreshing ? 'Atualizando…' : 'Atualizar'}
-          </button>
-          {lastLoadedAt ? (
-            <p className="sync-hint muted tiny" aria-live="polite">
-              Atualizado às{' '}
-              {lastLoadedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </p>
-          ) : null}
-        </div>
-      </header>
+    <DashboardLayout animateKey={hasLoadedOnce ? 'ready' : 'loading'}>
+      <PageHeader
+        title="Meus empréstimos"
+        subtitle={headerSubtitle}
+        role="borrower"
+        refreshing={refreshing}
+        lastLoadedAt={lastLoadedAt}
+        onRefresh={() => void load({ silent: true })}
+      />
 
-      {msg ? (
-        <div className="flash-row" role="status">
-          <p className="success flash-msg">{msg}</p>
-          <button type="button" className="btn ghost btn-dismiss" onClick={() => setMsg(null)}>
-            Fechar
-          </button>
-        </div>
-      ) : null}
-      {err ? (
-        <div className="error-banner" role="alert">
-          <p className="error error-flat">{err}</p>
-          <div className="flash-actions-inline">
-            <button type="button" className="btn ghost btn-dismiss" onClick={() => setErr(null)}>
-              Fechar
-            </button>
-            <button type="button" className="btn primary btn-compact" onClick={() => void load()}>
-              Tentar de novo
-            </button>
+      <PageAlerts
+        msg={msg}
+        err={err}
+        onDismissMsg={() => setMsg(null)}
+        onDismissErr={() => setErr(null)}
+        onRetry={() => void load()}
+      />
+
+      {borrowerBlocked ? (
+        <Alert variant="destructive" className="dash-enter flex gap-3 border-destructive/40 shadow-sm">
+          <svg className="size-5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="min-w-0 space-y-1">
+            <AlertTitle>Conta com empréstimo em atraso</AlertTitle>
+            <AlertDescription className="text-destructive/90">
+              {overdueCount > 0 ? (
+                <>
+                  {overdueCount === 1 ? 'Há 1 empréstimo' : `Há ${overdueCount} empréstimos`} com prazo vencido.
+                  Multa acumulada: <strong>{fmtBrl(totalFine)}</strong> ({fmtBrl(FINE_PER_DAY_BRL)} por dia).
+                  O(s) equipamento(s) está(ão) <strong>bloqueado(s)</strong> e novos pedidos ficam suspensos até a
+                  devolução.
+                </>
+              ) : (
+                <>Novos pedidos suspensos por pendência de regularização.</>
+              )}
+            </AlertDescription>
           </div>
-        </div>
+        </Alert>
       ) : null}
 
-      <div className="stat-grid" aria-label="Resumo do painel">
-        <div className="stat-tile stat-tile--ok">
-          <p className="stat-tile-value">{available.length}</p>
-          <span className="stat-tile-label">Disponíveis agora</span>
-          <p className="stat-tile-hint">Itens que aceitam novo pedido</p>
-        </div>
-        <div className={`stat-tile${pendingLoans.length ? ' stat-tile--warn' : ''}`}>
-          <p className="stat-tile-value">{pendingLoans.length}</p>
-          <span className="stat-tile-label">Aguardando aprovação</span>
-          <p className="stat-tile-hint">Pedidos enviados ao administrador</p>
-        </div>
-        <div className="stat-tile">
-          <p className="stat-tile-value">{activeLoans.length}</p>
-          <span className="stat-tile-label">Empréstimos ativos</span>
-          <p className="stat-tile-hint">Em uso após aprovação</p>
-        </div>
-        <div className={`stat-tile${overdueCount ? ' stat-tile--danger' : ''}`}>
-          <p className="stat-tile-value">{overdueCount}</p>
-          <span className="stat-tile-label">Em atraso</span>
-          <p className="stat-tile-hint">Prazo de devolução ultrapassado</p>
-        </div>
-        <div className="stat-tile">
-          <p className="stat-tile-value">{historyLoans.length}</p>
-          <span className="stat-tile-label">Histórico</span>
-          <p className="stat-tile-hint">Encerrados ou recusados</p>
-        </div>
-      </div>
-
-      <section className="card" aria-labelledby="borrow-panel-guide-title">
-        <h3 id="borrow-panel-guide-title">Como ler este painel</h3>
-        <div className="guide-columns">
-          <div>
-            <h4 className="guide-col-heading">Pedidos e empréstimos</h4>
-            <ul className="guide-list">
-              <li>
-                <strong>Pendente:</strong> aguarda decisão do administrador do NRDT.
+      {unreadNotifications.length > 0 ? (
+        <SectionCard
+          id="notifications"
+          title="Notificações do NRDT"
+          badge={unreadNotifications.length}
+          badgeVariant="danger"
+          className="notification-panel"
+        >
+          <ul className="notification-list">
+            {unreadNotifications.map((n) => (
+              <li key={n.id} className="notification-item notification-item--unread">
+                <p className="notification-message">{n.message}</p>
+                <p className="notification-meta muted tiny">
+                  {fmtDateTime(n.created_at)}
+                  {n.equipment_blocked ? ' · Equipamento bloqueado' : ''}
+                  {n.fine_amount > 0 ? ` · Multa ${fmtBrl(n.fine_amount)}` : ''}
+                </p>
+                <Button type="button" variant="outline" size="sm" onClick={() => void markNotificationRead(n.id)}>
+                  Marcar como lida
+                </Button>
               </li>
-              <li>
-                <strong>Ativo:</strong> em uso; registre a devolução até a data combinada.
-              </li>
-              <li>
-                <strong>Encerrado:</strong> devolução registrada no sistema.
-              </li>
-              <li>
-                <strong>Recusado:</strong> o pedido não foi aceito (motivo não é obrigatório neste protótipo).
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="guide-col-heading">Catálogo e pedido</h4>
-            <ul className="guide-list">
-              <li>
-                <strong>Ver ficha:</strong> descrição completa e código de patrimônio antes de solicitar.
-              </li>
-              <li>
-                <strong>Solicitar empréstimo:</strong> define retirada e devolução (mín. 3 dias); o termo aparece no passo 2.
-              </li>
-              <li>
-                A lista <strong>atualiza sozinha</strong> a cada ~12&nbsp;s com o separador visível; use <strong>Atualizar</strong> para
-                forçar.
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="guide-col-heading">Situações no acervo</h4>
-            <ul className="guide-list">
-              <li>
-                <strong>{EQUIPMENT_STATUS_LABELS.disponivel}:</strong> pode receber novo pedido.
-              </li>
-              <li>
-                <strong>{EQUIPMENT_STATUS_LABELS.emprestado}:</strong> vinculado a um empréstimo ativo ou fluxo em curso.
-              </li>
-              <li>
-                <strong>{EQUIPMENT_STATUS_LABELS.manutencao}:</strong> indisponível para empréstimo até nova liberação.
-              </li>
-            </ul>
-            <p className="guide-list-p guide-list-p-follow">Linhas em destaque indicam <strong>atraso</strong> face ao prazo de devolução.</p>
-          </div>
-        </div>
-      </section>
-
-      <div className="dashboard-panels">
-        <section className="card" aria-labelledby="borrow-guide-title">
-          <h3 id="borrow-guide-title">Fluxo na sua conta</h3>
-          <ol className="info-checklist">
-            <li>
-              Consulte a <strong>ficha completa</strong> do equipamento antes de pedir; o assistente de empréstimo
-              abre em dois passos: primeiro as <strong>datas previstas</strong>, depois o <strong>termo</strong> só ao finalizar.
-            </li>
-            <li>
-              Após enviar o pedido, acompanhe a secção <strong>Aguardando aprovação</strong> até o administrador decidir.
-            </li>
-            <li>
-              Com o empréstimo <strong>ativo</strong>, utilize o equipamento e registe a devolução a tempo; linhas em
-              vermelho indicam atraso.
-            </li>
-          </ol>
-          <p className="info-callout">
-            Esta página atualiza automaticamente a cada ~12 s quando o separador está visível. Use <strong>Atualizar</strong>{' '}
-            para forçar uma nova leitura.
-          </p>
-        </section>
-        <section className="card" aria-labelledby="borrow-tips-title">
-          <h3 id="borrow-tips-title">Boas práticas (demonstração)</h3>
-          <ul className="info-checklist">
-            <li>Prefira horários de devolução realistas no campus (ex.: fim de aula).</li>
-            <li>Em dúvida sobre o equipamento, abra <strong>Ver ficha</strong> — o resumo na lista é apenas orientativo.</li>
-            <li>O termo registado inclui versão — o administrador pode consultar o aceite no pedido.</li>
-            <li>Em produção real, haveria notificações por e-mail; aqui o acompanhamento é só neste painel.</li>
+            ))}
           </ul>
-        </section>
-      </div>
+        </SectionCard>
+      ) : null}
 
-      <section className="card" aria-labelledby="avail-title">
-        <h3 id="avail-title">Equipamentos disponíveis para empréstimo</h3>
-        <p id="catalog-hint" className="field-hint">
-          Cada linha mostra um <strong>resumo</strong> do item. Use <strong>Ver ficha</strong> para descrição completa e
-          dados de património. Use <strong>Solicitar empréstimo</strong> para abrir o assistente: no passo 1 escolhe a
-          <strong>data de retirada</strong> e a <strong>data de devolução</strong> (intervalo mínimo de 3 dias); o{' '}
-          <strong>termo de responsabilidade</strong> só aparece no passo 2. Após enviar, o estado fica{' '}
-          <strong>pendente</strong> até o NRDT aprovar; a retirada efetiva só é registrada na aprovação.
+      {notifications.filter((n) => n.read_at).length > 0 && unreadNotifications.length === 0 ? (
+        <p className="muted tiny notification-read-hint">
+          Notificações anteriores já foram lidas. Em caso de novo atraso, a coordenação pode enviar outro alerta.
         </p>
+      ) : null}
+
+      <KpiStrip items={kpiItems} layout="borrower" />
+
+      <SectionCard
+        id="avail-catalog"
+        title="Equipamentos disponíveis"
+        badge={available.length || undefined}
+        description={
+          borrowerBlocked
+            ? 'Pedidos suspensos: regularize o empréstimo em atraso antes de solicitar outro item.'
+            : 'Ver ficha para detalhes · Solicitar empréstimo abre o assistente em 2 passos (datas e termo).'
+        }
+        descriptionClassName={
+          borrowerBlocked ? 'section-card-desc text-alert' : 'section-card-desc'
+        }
+      >
         {!hasLoadedOnce && err ? (
           <p className="muted section-retry-hint">Não foi possível carregar o acervo.</p>
         ) : hasLoadedOnce && available.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-title">Nada disponível para novo pedido</p>
-            <p className="empty-state-text">
-              Os itens podem estar em manutenção, com pedido pendente ou emprestados. Atualize em instantes.
-            </p>
-          </div>
+          <EmptyState
+            title="Nada disponível para novo pedido"
+            subtle
+            text="Os itens podem estar em manutenção, com pedido pendente ou emprestados. Atualize em instantes."
+          />
         ) : (
-          <ul className="list">
+          <ul className="equipment-catalog-grid">
             {available.map((eq) => (
               <li key={eq.id}>
-                <CatalogEquipmentRow
+                <EquipmentCatalogCard
                   equipment={eq}
                   onShowDetail={() => setDetailEquipment(eq)}
                   onStartRequest={() => setRequestEquipment(eq)}
+                  requestDisabled={borrowerBlocked}
+                  requestDisabledTitle="Há empréstimo em atraso. Registre a devolução antes de um novo pedido."
                 />
               </li>
             ))}
           </ul>
         )}
-      </section>
+      </SectionCard>
 
-      <section className="card" aria-labelledby="pending-title">
-        <h3 id="pending-title">Aguardando aprovação</h3>
+      <SectionCard
+        id="pending"
+        title="Aguardando aprovação"
+        badge={pendingLoans.length || undefined}
+        badgeVariant={pendingLoans.length ? 'warn' : 'default'}
+      >
         {!hasLoadedOnce && err ? (
           <p className="muted section-retry-hint">Lista indisponível no momento.</p>
-        ) : pendingLoans.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-text">Quando enviar um pedido, ele aparecerá aqui até o administrador decidir.</p>
-          </div>
         ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <caption className="sr-only">Solicitações pendentes</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Equipamento</th>
-                  <th scope="col">Patrimônio</th>
-                  <th scope="col">Pedido em</th>
-                  <th scope="col">Retirada prevista</th>
-                  <th scope="col">Devolução prevista</th>
-                  <th scope="col">Situação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingLoans.map((l) => (
-                  <tr key={l.id}>
-                    <td>{l.equipment?.name ?? '—'}</td>
-                    <td>
-                      {l.equipment?.inventory_code ? (
-                        <code className="patrimony-code">{l.equipment.inventory_code}</code>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td>{fmtDateTime(l.created_at)}</td>
-                    <td>{fmtDateOnly(l.pickup_at)}</td>
-                    <td>{fmtDateOnly(l.due_at)}</td>
-                    <td>
-                      <LoanSituationPill status={l.status} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveDataView
+            caption="Solicitações pendentes"
+            rows={pendingLoans}
+            rowKey={(l) => l.id}
+            columns={[
+              { key: 'eq', header: 'Equipamento', render: (l) => l.equipment?.name ?? '—' },
+              {
+                key: 'pat',
+                header: 'Patrimônio',
+                render: (l) =>
+                  l.equipment?.inventory_code ? (
+                    <code className="patrimony-code">{l.equipment.inventory_code}</code>
+                  ) : (
+                    '—'
+                  ),
+              },
+              { key: 'created', header: 'Pedido em', render: (l) => fmtDateTime(l.created_at) },
+              { key: 'pickup', header: 'Retirada', priority: 'low', render: (l) => fmtDateOnly(l.pickup_at) },
+              { key: 'due', header: 'Devolução', priority: 'low', render: (l) => fmtDateOnly(l.due_at) },
+              {
+                key: 'status',
+                header: 'Situação',
+                render: (l) => <LoanSituationPill status={l.status} />,
+              },
+            ]}
+            empty={
+              <EmptyState
+                subtle
+                text="Quando enviar um pedido, ele aparecerá aqui até o administrador decidir."
+              />
+            }
+            renderCard={(l) => (
+              <>
+                <DataCardRow label="Equipamento">{l.equipment?.name ?? '—'}</DataCardRow>
+                <DataCardRow label="Patrimônio">
+                  {l.equipment?.inventory_code ? (
+                    <code className="patrimony-code">{l.equipment.inventory_code}</code>
+                  ) : (
+                    '—'
+                  )}
+                </DataCardRow>
+                <DataCardRow label="Pedido em">{fmtDateTime(l.created_at)}</DataCardRow>
+                <DataCardRow label="Situação">
+                  <LoanSituationPill status={l.status} />
+                </DataCardRow>
+              </>
+            )}
+          />
         )}
-      </section>
+      </SectionCard>
 
-      <section className="card" aria-labelledby="active-title">
-        <h3 id="active-title">Meus empréstimos ativos</h3>
+      <SectionCard
+        id="active"
+        title="Meus empréstimos ativos"
+        badge={activeLoans.length || undefined}
+        badgeVariant={overdueCount ? 'danger' : 'default'}
+      >
         {!hasLoadedOnce && err ? (
           <p className="muted section-retry-hint">Lista indisponível no momento.</p>
-        ) : hasLoadedOnce && activeLoans.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-text">
-              Após a aprovação do administrador, o empréstimo ativo aparecerá aqui com prazo e opção de devolução.
-            </p>
-          </div>
         ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <caption className="sr-only">Empréstimos em curso</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Equipamento</th>
-                  <th scope="col">Patrimônio</th>
-                  <th scope="col">Retirada efetiva</th>
-                  <th scope="col">Devolver até</th>
-                  <th scope="col">Situação</th>
-                  <th scope="col">Ação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeLoans.map((l) => {
-                  const overdue = isLoanOverdue(l.due_at, l.status)
-                  return (
-                    <tr key={l.id} className={overdue ? 'row-alert' : undefined}>
-                      <td>{l.equipment?.name ?? '—'}</td>
-                      <td>
-                        {l.equipment?.inventory_code ? (
-                          <code className="patrimony-code">{l.equipment.inventory_code}</code>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td>{fmtApprovedAt(l.approved_at)}</td>
-                      <td>
-                        <span className={overdue ? 'text-alert' : undefined}>{fmtDateOnly(l.due_at)}</span>
-                      </td>
-                      <td>
-                        <LoanSituationPill status={l.status} overdue={overdue} />
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          className="btn primary btn-table"
-                          onClick={() => setReturnConfirm(l)}
-                        >
-                          Devolver
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveDataView
+            caption="Empréstimos em curso"
+            rows={activeLoans}
+            rowKey={(l) => l.id}
+            rowClassName={(l) => (loanIsOverdue(l) ? 'row-alert' : undefined)}
+            columns={[
+              { key: 'eq', header: 'Equipamento', render: (l) => l.equipment?.name ?? '—' },
+              {
+                key: 'pat',
+                header: 'Patrimônio',
+                priority: 'low',
+                render: (l) =>
+                  l.equipment?.inventory_code ? (
+                    <code className="patrimony-code">{l.equipment.inventory_code}</code>
+                  ) : (
+                    '—'
+                  ),
+              },
+              { key: 'due', header: 'Devolver até', render: (l) => {
+                const overdue = loanIsOverdue(l)
+                return (
+                  <span className={overdue ? 'text-alert' : undefined}>{fmtDateOnly(l.due_at)}</span>
+                )
+              }},
+              {
+                key: 'fine',
+                header: 'Multa',
+                priority: 'low',
+                render: (l) => (loanIsOverdue(l) ? fmtBrl(loanFineAmount(l)) : '—'),
+              },
+              {
+                key: 'status',
+                header: 'Situação',
+                render: (l) => <LoanSituationPill status={l.status} overdue={loanIsOverdue(l)} />,
+              },
+              {
+                key: 'action',
+                header: 'Ação',
+                render: (l) => (
+                  <Button type="button" size="sm" onClick={() => setReturnConfirm(l)}>
+                    Devolver
+                  </Button>
+                ),
+              },
+            ]}
+            empty={
+              <EmptyState
+                subtle
+                text="Após a aprovação do administrador, o empréstimo ativo aparecerá aqui com prazo e opção de devolução."
+              />
+            }
+            renderCard={(l) => {
+              const overdue = loanIsOverdue(l)
+              const fine = loanFineAmount(l)
+              const blocked = loanEquipmentBlocked(l)
+              return (
+                <>
+                  <DataCardRow label="Equipamento">{l.equipment?.name ?? '—'}</DataCardRow>
+                  <DataCardRow label="Devolver até">
+                    <span className={overdue ? 'text-alert' : undefined}>{fmtDateOnly(l.due_at)}</span>
+                  </DataCardRow>
+                  {overdue ? <DataCardRow label="Multa">{fmtBrl(fine)}</DataCardRow> : null}
+                  <DataCardRow label="Bloqueio">
+                    {blocked ? (
+                      <span className="pill pill-danger">Bloqueado</span>
+                    ) : (
+                      <span className="pill pill-ok">—</span>
+                    )}
+                  </DataCardRow>
+                  <DataCardFooter>
+                    <Button type="button" size="sm" onClick={() => setReturnConfirm(l)}>
+                      Devolver
+                    </Button>
+                  </DataCardFooter>
+                </>
+              )
+            }}
+          />
         )}
-      </section>
+      </SectionCard>
 
-      <section className="card" aria-labelledby="history-title">
-        <h3 id="history-title">Histórico de empréstimos</h3>
+      <SectionCard
+        id="history"
+        title="Histórico de empréstimos"
+        badge={historyLoans.length || undefined}
+        defaultCollapsed
+      >
         {!hasLoadedOnce && err ? (
           <p className="muted section-retry-hint">Histórico indisponível no momento.</p>
-        ) : historyLoans.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-text">Empréstimos encerrados ou recusados aparecerão aqui.</p>
-          </div>
         ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <caption className="sr-only">Histórico</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Equipamento</th>
-                  <th scope="col">Patrimônio</th>
-                  <th scope="col">Pedido em</th>
-                  <th scope="col">Retirada prevista</th>
-                  <th scope="col">Devolução prevista</th>
-                  <th scope="col">Retirada efetiva</th>
-                  <th scope="col">Situação</th>
-                  <th scope="col">Devolvido em</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyLoans.map((l) => (
-                  <tr key={l.id}>
-                    <td>{l.equipment?.name ?? '—'}</td>
-                    <td>
-                      {l.equipment?.inventory_code ? (
-                        <code className="patrimony-code">{l.equipment.inventory_code}</code>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td>{fmtDateTime(l.created_at)}</td>
-                    <td>{fmtDateOnly(l.pickup_at)}</td>
-                    <td>{fmtDateOnly(l.due_at)}</td>
-                    <td>{fmtApprovedAt(l.approved_at)}</td>
-                    <td>
-                      <LoanSituationPill status={l.status} />
-                    </td>
-                    <td>{l.returned_at ? fmtDateTime(l.returned_at) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ResponsiveDataView
+            caption="Histórico"
+            rows={historyLoans}
+            rowKey={(l) => l.id}
+            columns={[
+              { key: 'eq', header: 'Equipamento', render: (l) => l.equipment?.name ?? '—' },
+              {
+                key: 'pat',
+                header: 'Patrimônio',
+                priority: 'low',
+                render: (l) =>
+                  l.equipment?.inventory_code ? (
+                    <code className="patrimony-code">{l.equipment.inventory_code}</code>
+                  ) : (
+                    '—'
+                  ),
+              },
+              { key: 'created', header: 'Pedido em', priority: 'low', render: (l) => fmtDateTime(l.created_at) },
+              {
+                key: 'status',
+                header: 'Situação',
+                render: (l) => <LoanSituationPill status={l.status} />,
+              },
+              {
+                key: 'returned',
+                header: 'Devolvido em',
+                render: (l) => (l.returned_at ? fmtDateTime(l.returned_at) : '—'),
+              },
+            ]}
+            empty={
+              <EmptyState subtle text="Empréstimos encerrados ou recusados aparecerão aqui." />
+            }
+            renderCard={(l) => (
+              <>
+                <DataCardRow label="Equipamento">{l.equipment?.name ?? '—'}</DataCardRow>
+                <DataCardRow label="Situação">
+                  <LoanSituationPill status={l.status} />
+                </DataCardRow>
+                <DataCardRow label="Devolvido em">
+                  {l.returned_at ? fmtDateTime(l.returned_at) : '—'}
+                </DataCardRow>
+              </>
+            )}
+          />
         )}
-      </section>
+      </SectionCard>
 
-      <div className="dashboard-panels">
-        <section className="card" aria-labelledby="borrow-session-title">
-          <h3 id="borrow-session-title">Sessão e privacidade (demonstração)</h3>
-          <p className="info-panel">
-            O token de acesso fica guardado neste navegador apenas para a simulação. Num computador compartilhado, use{' '}
-            <strong>Sair</strong> no fim. Os dados do laboratório residem na base SQLite da API nesta máquina.
-          </p>
-          <p className="info-callout">
-            Não utilize dados pessoais reais: o cenário NRDT / EquipFlow é académico e fictício.
-          </p>
-        </section>
-        <section className="card" aria-labelledby="borrow-api-title">
-          <h3 id="borrow-api-title">Suporte técnico e documentação</h3>
-          <p className="info-panel">
-            Se o pedido falhar com erro de rede ou 401, confirme que a API está no ar e que a sessão não expirou (faça
-            login de novo). Com o backend local, pode consultar rotas e exemplos em{' '}
-            <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
-              127.0.0.1:8000/docs
-            </a>
-            .
-          </p>
-          <p className="info-panel">
-            Para testar no celular na mesma rede Wi-Fi, o servidor de desenvolvimento do Vite e o FastAPI precisam de
-            estar acessíveis pelo endereço IP deste PC (não só <code className="patrimony-code">localhost</code>).
-          </p>
-        </section>
+      <div id="borrow-rules">
+        <BusinessRulesPanel role="borrower" sections={BORROWER_BUSINESS_RULES} />
       </div>
 
       <EquipmentDetailDialog equipment={detailEquipment} onDismiss={() => setDetailEquipment(null)} />
@@ -543,6 +565,6 @@ export function BorrowerDashboard() {
           </p>
         ) : null}
       </ConfirmDialog>
-    </div>
+    </DashboardLayout>
   )
 }

@@ -152,6 +152,9 @@ echo [5/5] Subindo API ^(8000^) e Vite ^(5173^). Ctrl+C encerra ambos.
 echo         Site: http://127.0.0.1:5173/
 echo         API:  http://127.0.0.1:8000/docs
 if "!PORTABLE!"=="1" echo         Modo: portatil ^(pode copiar esta pasta para outro PC^)
+echo         IPs LAN para o celular serao listados abaixo em alguns segundos.
+where node >nul 2>&1
+if not errorlevel 1 start /b "" node "%ROOT%scripts\print-lan-ips.cjs"
 echo.
 call npm run dev
 cd /d "%ROOT%"

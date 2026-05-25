@@ -1,8 +1,11 @@
 """Validação de datas previstas de retirada e devolução (empréstimo)."""
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 MIN_LOAN_DAYS = 3
+
+# Fuso do campus (Campo Grande/MS, UTC−4, sem horário de verão). Alinha "hoje" com o calendário do navegador no Brasil.
+_CAMPUS_TZ = timezone(timedelta(hours=-4))
 
 
 def _as_utc_date(dt: datetime) -> date:
@@ -11,13 +14,18 @@ def _as_utc_date(dt: datetime) -> date:
     return dt.astimezone(timezone.utc).date()
 
 
+def _today_campus(now: datetime | None = None) -> date:
+    now = now or datetime.now(timezone.utc)
+    return now.astimezone(_CAMPUS_TZ).date()
+
+
 def validate_loan_schedule(pickup_at: datetime, due_at: datetime, *, now: datetime | None = None) -> str | None:
     """
     Retorna mensagem de erro em português ou None se válido.
     Regras: retirada >= hoje; devolução > retirada; intervalo mínimo de MIN_LOAN_DAYS dias de calendário.
     """
-    now = now or datetime.now(timezone.utc)
-    today = _as_utc_date(now)
+    today = _today_campus(now)
+    # O front envia o dia escolhido como meio-dia UTC (YYYY-MM-DDT12:00:00Z).
     pickup_d = _as_utc_date(pickup_at)
     due_d = _as_utc_date(due_at)
 

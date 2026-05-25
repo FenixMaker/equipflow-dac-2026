@@ -5,9 +5,12 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.database import get_db
 from app.deps import get_current_user, require_admin
-from app.models import Equipment, EquipmentStatus, Loan, LoanStatus, User
 from app.loan_dates import validate_loan_schedule
-from app.schemas import LoanCreate, LoanRead
+from app.loan_serializer import serialize_loan
+from app.models import Equipment, EquipmentStatus, Loan, LoanNotification, LoanStatus, User
+from app.overdue import borrower_has_overdue_loans, is_loan_overdue, overdue_info_for_loan
+from app.overdue_notify import build_overdue_notification_message
+from app.schemas import LoanCreate, LoanRead, NotificationRead
 from app.terms import CURRENT_LOAN_TERMS_VERSION
 
 router = APIRouter(prefix="/loans", tags=["loans"])
@@ -62,6 +65,15 @@ def create_loan(
             detail="Já existe solicitação pendente ou empréstimo ativo para este equipamento.",
         )
 
+    if borrower_has_overdue_loans(db, user.id):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Há empréstimo em atraso com equipamento bloqueado. "
+                "Registre a devolução antes de solicitar outro item."
+            ),
+        )
+
     now = datetime.now(timezone.utc)
     date_err = validate_loan_schedule(body.pickup_at, body.due_at, now=now)
     if date_err:
@@ -81,7 +93,7 @@ def create_loan(
     db.refresh(loan)
     loan = _load_loan(db, loan.id)
     assert loan is not None
-    return loan
+    return serialize_loan(loan, db)
 
 
 @router.get("/me", response_model=list[LoanRead])
@@ -96,7 +108,7 @@ def my_loans(
         .order_by(Loan.created_at.desc())
         .all()
     )
-    return rows
+    return [serialize_loan(r, db) for r in rows]
 
 
 @router.get("/pending", response_model=list[LoanRead])
@@ -111,7 +123,7 @@ def pending_loans_admin(
         .order_by(Loan.created_at.desc())
         .all()
     )
-    return rows
+    return [serialize_loan(r, db) for r in rows]
 
 
 @router.get("/active", response_model=list[LoanRead])
@@ -126,7 +138,7 @@ def active_loans_admin(
         .order_by(Loan.due_at)
         .all()
     )
-    return rows
+    return [serialize_loan(r, db) for r in rows]
 
 
 @router.get("/finished", response_model=list[LoanRead])
@@ -142,7 +154,7 @@ def finished_loans_admin(
         .order_by(Loan.returned_at.desc(), Loan.created_at.desc())
         .all()
     )
-    return rows
+    return [serialize_loan(r, db) for r in rows]
 
 
 @router.get("/rejected", response_model=list[LoanRead])
@@ -157,7 +169,7 @@ def rejected_loans_admin(
         .order_by(Loan.created_at.desc())
         .all()
     )
-    return rows
+    return [serialize_loan(r, db) for r in rows]
 
 
 @router.post("/{loan_id}/approve", response_model=LoanRead)
@@ -198,7 +210,9 @@ def approve_loan(
     eq.status = EquipmentStatus.emprestado
     db.commit()
     db.refresh(loan)
-    return _load_loan(db, loan_id)  # type: ignore[return-value]
+    loaded = _load_loan(db, loan_id)
+    assert loaded is not None
+    return serialize_loan(loaded, db)
 
 
 @router.post("/{loan_id}/reject", response_model=LoanRead)
@@ -216,7 +230,45 @@ def reject_loan(
     loan.status = LoanStatus.recusado
     db.commit()
     db.refresh(loan)
-    return _load_loan(db, loan_id)  # type: ignore[return-value]
+    loaded = _load_loan(db, loan_id)
+    assert loaded is not None
+    return serialize_loan(loaded, db)
+
+
+@router.post("/{loan_id}/notify-overdue", response_model=NotificationRead)
+def notify_overdue(
+    loan_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Envia notificação in-app ao tomador sobre atraso, multa e bloqueio do equipamento."""
+    loan = _load_loan(db, loan_id)
+    if loan is None:
+        raise HTTPException(status_code=404, detail="Empréstimo não encontrado")
+    if loan.status != LoanStatus.ativo:
+        raise HTTPException(status_code=400, detail="Somente empréstimos ativos podem ser notificados")
+    if not is_loan_overdue(loan.due_at, loan.status):
+        raise HTTPException(status_code=400, detail="Este empréstimo ainda não está em atraso")
+
+    borrower = loan.borrower
+    if borrower is None:
+        raise HTTPException(status_code=400, detail="Tomador não encontrado")
+
+    info = overdue_info_for_loan(loan)
+    message = build_overdue_notification_message(loan, borrower)
+    note = LoanNotification(
+        loan_id=loan.id,
+        recipient_id=borrower.id,
+        sent_by_id=admin.id,
+        message=message,
+        days_overdue=info.days_overdue,
+        fine_amount=info.fine_amount,
+        equipment_blocked=info.equipment_blocked,
+    )
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    return note
 
 
 @router.post("/{loan_id}/return", response_model=LoanRead)
@@ -238,4 +290,6 @@ def return_loan(
     loan.equipment.status = EquipmentStatus.disponivel
     db.commit()
     db.refresh(loan)
-    return loan
+    loaded = _load_loan(db, loan_id)
+    assert loaded is not None
+    return serialize_loan(loaded, db)

@@ -1,4 +1,4 @@
-import type { Equipment, EquipmentStatus, Loan, User } from './types'
+import type { Equipment, EquipmentStatus, Loan, LoanNotification, User } from './types'
 
 /** Em dev, URLs relativas passam pelo proxy do Vite (celular na mesma LAN). Em build, use VITE_API_URL. */
 const base =
@@ -120,4 +120,12 @@ export const loansApi = {
   approve: (id: number) => api<Loan>(`/loans/${id}/approve`, { method: 'POST' }),
   reject: (id: number) => api<Loan>(`/loans/${id}/reject`, { method: 'POST' }),
   returnLoan: (id: number) => api<Loan>(`/loans/${id}/return`, { method: 'POST' }),
+  notifyOverdue: (id: number) =>
+    api<LoanNotification>(`/loans/${id}/notify-overdue`, { method: 'POST' }),
+}
+
+export const notificationsApi = {
+  mine: () => api<LoanNotification[]>('/notifications/me'),
+  markRead: (id: number) =>
+    api<LoanNotification>(`/notifications/${id}/read`, { method: 'PATCH' }),
 }

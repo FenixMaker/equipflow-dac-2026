@@ -9,6 +9,10 @@ runtime/_tmp/
 
 # Build
 frontend/dist/
+frontend/node_modules/.tmp/
+
+# Cache Python (não versionar)
+backend/app/**/__pycache__/
 
 # Python
 __pycache__/

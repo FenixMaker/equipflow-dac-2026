@@ -58,7 +58,7 @@ Cada captura abaixo mostra uma parte do protótipo e o que ela representa no flu
 
 <img src="docs/screenshots/01-login-claro.png" alt="Login tema claro" width="100%"/>
 
-Ponto de entrada do sistema. O docente ou o administrador informa e-mail e senha; há atalhos para preencher as **contas de demonstração** e alternância para o **tema escuro**. O painel lateral traz o logotipo do EquipFlow e, na parte inferior, o bloco **Abrir no celular** com QR para teste na mesma rede local (Wi‑Fi ou cabo).
+Ponto de entrada do sistema. O **carrossel de perfis** permite escolher uma conta de demonstração (ícone de administrador com escudo ou de solicitante) e entrar com um clique; também é possível informar e-mail e senha manualmente. Há alternância de **tema claro/escuro**. O painel lateral traz o logotipo do EquipFlow e o bloco **Abrir no celular** com QR para teste na mesma rede local (Wi‑Fi ou cabo).
 
 ---
 
@@ -74,7 +74,7 @@ Mesma tela de autenticação com paleta escura, persistida no navegador. Útil p
 
 <img src="docs/screenshots/03-admin-painel.png" alt="Painel administrador" width="100%"/>
 
-Visão central da **coordenação do NRDT**. Cards resumem o acervo (total, disponíveis, emprestados, manutenção) e o pipeline de pedidos (pendentes, ativos, histórico). Abaixo há gráfico de distribuição, orientações operacionais, formulário para **incluir patrimônio** e tabela de itens cadastrados com alteração de situação.
+Visão central da **coordenação do NRDT**. Indicadores resumem o acervo e os pedidos; as seções **Solicitações pendentes** e **Empréstimos ativos** aparecem em coluna (uma abaixo da outra) para leitura sem rolagem horizontal. Há distribuição do acervo, formulário para **incluir patrimônio**, tabela de itens e ações de aprovação, notificação de atraso e edição.
 
 ---
 
@@ -90,7 +90,7 @@ Modal aberto a partir da coluna **Editar** na tabela de patrimônio. Permite cor
 
 <img src="docs/screenshots/05-admin-emprestimos-ativos.png" alt="Empréstimos ativos admin" width="100%"/>
 
-Seções **Solicitações pendentes**, **Empréstimos ativos** e **Histórico de empréstimos**. O administrador acompanha quem retirou cada equipamento, prazos de devolução e registros já encerrados — base para decisões de aprovação e auditoria mínima do protótipo.
+Detalhe das filas **Solicitações pendentes** e **Empréstimos ativos** (layout empilhado), com prazos, multa por atraso, bloqueio e botão para notificar o tomador. Serve de base para aprovação e acompanhamento operacional do protótipo.
 
 ---
 
@@ -197,7 +197,7 @@ Todas as capturas do protótipo, em ordem, para consulta rápida ou uso em slide
 
 | Camada | Tecnologias |
 |--------|-------------|
-| **Front end** | React 19 · TypeScript · Vite |
+| **Front end** | React 19 · TypeScript · Vite · Tailwind CSS |
 | **Back end** | Python · FastAPI · SQLAlchemy |
 | **Dados** | SQLite |
 | **Auth** | JWT · bcrypt |
@@ -275,12 +275,12 @@ npm run dev
 
 <br/>
 
-1. Suba o projeto com `npm run dev` (API em `0.0.0.0:8000`, Vite em `0.0.0.0:5173`).
-2. Na tela de login, o **QR code** usa o IP LAN do PC (funciona com Wi‑Fi ou cabo/Ethernet). Se abrir por `localhost`, o sistema detecta o IP automaticamente via `/health`.
-3. Com mais de uma placa de rede, escolha o IP correto no seletor abaixo do QR.
+1. Suba o projeto com `npm run dev` (API em `0.0.0.0:8000`, Vite em `0.0.0.0:5173`). O `iniciar-equipflow.bat` lista os IPs LAN no terminal após a API subir.
+2. Na tela de login, o **QR code** usa o IP LAN do PC. Se abrir por `localhost`, o sistema detecta o IP automaticamente via `/health`.
+3. Com mais de uma placa de rede, escolha o IP no seletor abaixo do QR. **Celular no Wi‑Fi:** prefira o IP **Wi‑Fi** do notebook (é o padrão quando o Wi‑Fi está ligado).
 4. O proxy do Vite encaminha `/auth`, `/equipment`, `/loans` e `/health` para a API no PC.
-5. **PC no cabo e celular no Wi‑Fi:** use o Wi‑Fi da rede principal (não “convidado”); o QR prioriza o IP do adaptador **Ethernet**.
-6. Se o celular mostrar “não foi possível acessar”, no PC execute como administrador: `powershell -ExecutionPolicy Bypass -File scripts\liberar-firewall-windows.ps1` e teste o link abaixo do QR no próprio PC.
+5. **Notebook só no cabo e celular no Wi‑Fi:** o roteador precisa fazer ponte entre cabo e Wi‑Fi (comum em casa; em rede institucional ou Wi‑Fi convidado, muitas vezes não funciona). Se o celular não abrir, **ligue o Wi‑Fi do notebook** na mesma rede do celular (pode manter o cabo) e use o IP Wi‑Fi no QR.
+6. Se o celular mostrar “não foi possível acessar”, teste o link abaixo do QR no próprio PC (`http://IP:5173`). Se no PC funcionar e no celular não, troque para o IP Wi‑Fi ou ligue o Wi‑Fi do notebook conforme o aviso na tela de login.
 
 Em **build de produção** (`npm run build`), configure `VITE_API_URL` com a URL pública da API.
 
@@ -295,7 +295,7 @@ Em **build de produção** (`npm run build`), configure `VITE_API_URL` com a URL
 | Administrador | `admin@labnrdt.edu.br` | `Admin@123` |
 | Solicitante | `usuario@labnrdt.edu.br` | `Usuario@123` |
 
-Na tela de login, use os botões **Conta administrador** ou **Conta solicitante** para preencher automaticamente.
+Na tela de login, selecione um perfil no **carrossel** e use **Entrar como Conta Selecionada**, ou preencha e-mail e senha manualmente.
 
 ---
 
@@ -327,7 +327,7 @@ DATABASE_URL=sqlite:///./data/equipflow.db
 
 **Recriar dados de demo:** apague `backend/data/equipflow.db` e suba a API novamente (necessário após alterações no modelo de empréstimos).
 
-**Atualizar capturas do pedido (prints 08 e 09):** com `npm run dev` ativo, execute `npm run screenshots:loan`.
+**Atualizar capturas do README:** `npm run screenshots` (sobe API + Vite, gera 01–10 e encerra). Com servidores já no ar: `node scripts/capture-screenshots.mjs`. Só o fluxo de pedido: `npm run screenshots:loan` (requer `npm run dev` ativo).
 
 ---
 
@@ -337,7 +337,6 @@ DATABASE_URL=sqlite:///./data/equipflow.db
 |---------|-----------|
 | [documento-projeto-dac.md](docs/documento-projeto-dac.md) | Texto-base para o PDF do projeto |
 | [checklist-orientacoes-ucdb.txt](docs/checklist-orientacoes-ucdb.txt) | Checklist do documento orientador |
-| [guia-slides-apresentacao.md](docs/guia-slides-apresentacao.md) | Guia de montagem dos slides para a banca |
 | [screenshots/](docs/screenshots/) | Capturas de tela do protótipo |
 
 ---
@@ -362,6 +361,6 @@ equipflow-dac-2026/
 
 **EquipFlow** · DAC 2026 · TADS · UCDB
 
-*Protótipo acadêmico — NRDT (fictício)*
+*NRDT fictício — trabalho DAC 2026*
 
 </div>

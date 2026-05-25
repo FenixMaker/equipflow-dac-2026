@@ -33,4 +33,21 @@ export interface Loan {
   terms_version: string | null
   equipment?: Equipment | null
   borrower?: { id: number; email: string; full_name: string } | null
+  days_overdue?: number
+  fine_amount?: number
+  equipment_blocked?: boolean
+  borrower_blocked?: boolean
+}
+
+export interface LoanNotification {
+  id: number
+  loan_id: number
+  recipient_id: number
+  sent_by_id: number | null
+  message: string
+  days_overdue: number
+  fine_amount: number
+  equipment_blocked: boolean
+  created_at: string
+  read_at: string | null
 }

@@ -4,10 +4,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, SessionLocal, engine
+from app.demo_users import ensure_demo_users
 from app.models import Equipment, EquipmentStatus, User, UserRole
 from app.auth_utils import hash_password
-from app.lan_hosts import get_lan_interfaces, get_lan_ipv4_addresses, pick_recommended_lan_ip
-from app.routers import auth, equipment, loans
+from app.lan_hosts import (
+    get_lan_interfaces,
+    get_lan_ipv4_addresses,
+    get_lan_qr_hint,
+    pick_recommended_lan_ip,
+)
+from app.routers import auth, equipment, loans, notifications
 
 
 def seed_if_empty():
@@ -15,6 +21,7 @@ def seed_if_empty():
     db = SessionLocal()
     try:
         if db.query(User).first() is None:
+            borrower_hash = hash_password("Usuario@123")
             db.add_all(
                 [
                     User(
@@ -26,7 +33,43 @@ def seed_if_empty():
                     User(
                         email="usuario@labnrdt.edu.br",
                         full_name="Docente Silva",
-                        hashed_password=hash_password("Usuario@123"),
+                        hashed_password=borrower_hash,
+                        role=UserRole.borrower,
+                    ),
+                    User(
+                        email="rocha@labnrdt.edu.br",
+                        full_name="Prof. Eduardo Rocha",
+                        hashed_password=borrower_hash,
+                        role=UserRole.borrower,
+                    ),
+                    User(
+                        email="costa@labnrdt.edu.br",
+                        full_name="Profª. Marina Costa",
+                        hashed_password=borrower_hash,
+                        role=UserRole.borrower,
+                    ),
+                    User(
+                        email="daniel@labnrdt.edu.br",
+                        full_name="Daniel Souza",
+                        hashed_password=borrower_hash,
+                        role=UserRole.borrower,
+                    ),
+                    User(
+                        email="camila@labnrdt.edu.br",
+                        full_name="Camila Ferreira",
+                        hashed_password=borrower_hash,
+                        role=UserRole.borrower,
+                    ),
+                    User(
+                        email="joao@labnrdt.edu.br",
+                        full_name="João Pereira",
+                        hashed_password=borrower_hash,
+                        role=UserRole.borrower,
+                    ),
+                    User(
+                        email="lucas@labnrdt.edu.br",
+                        full_name="Lucas Almeida",
+                        hashed_password=borrower_hash,
                         role=UserRole.borrower,
                     ),
                 ]
@@ -207,6 +250,11 @@ def seed_if_empty():
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     seed_if_empty()
+    db = SessionLocal()
+    try:
+        ensure_demo_users(db)
+    finally:
+        db.close()
     yield
 
 
@@ -236,6 +284,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(equipment.router)
 app.include_router(loans.router)
+app.include_router(notifications.router)
 
 
 @app.get("/health")
@@ -246,4 +295,5 @@ def health():
         "lan_addresses": get_lan_ipv4_addresses(),
         "lan_interfaces": interfaces,
         "lan_recommended": pick_recommended_lan_ip(),
+        "lan_qr_hint": get_lan_qr_hint(),
     }

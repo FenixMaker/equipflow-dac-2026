@@ -1,12 +1,28 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { equipmentApi, loansApi } from '../api'
 import type { Equipment, EquipmentStatus, Loan } from '../types'
+import { ADMIN_BUSINESS_RULES } from '../constants/businessRules'
+import { BusinessRulesPanel } from './BusinessRulesPanel'
 import { ConfirmDialog } from './ConfirmDialog'
+import { EmptyState } from './dashboard/EmptyState'
+import { KpiStrip } from './dashboard/KpiStrip'
+import { PageAlerts } from './dashboard/PageAlerts'
+import { PageHeader } from './dashboard/PageHeader'
+import {
+  DataCardFooter,
+  DataCardRow,
+  ResponsiveDataView,
+} from './dashboard/ResponsiveDataView'
+import { Button } from '@/components/ui/button'
+import { DashboardLayout } from './dashboard/DashboardLayout'
+import { SectionCard } from './dashboard/SectionCard'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { EditEquipmentDialog } from './EditEquipmentDialog'
 import { EquipmentStatusPill } from './StatusPill'
 import { equipmentStatusLabel } from '../labels/equipmentStatus'
-import { fmtApprovedAt, fmtDateOnly, fmtDateTime, isLoanOverdue } from '../utils/date'
+import { fmtApprovedAt, fmtDateOnly, fmtDateTime } from '../utils/date'
+import { fmtBrl, loanDaysOverdue, loanEquipmentBlocked, loanFineAmount, loanIsOverdue } from '../utils/overdue'
+import { FINE_PER_DAY_BRL } from '../constants/overdue'
 
 const POLL_MS = 12_000
 
@@ -39,6 +55,7 @@ export function AdminDashboard() {
   const [editing, setEditing] = useState<Equipment | null>(null)
   const [editBusy, setEditBusy] = useState(false)
   const [loanActionBusy, setLoanActionBusy] = useState<number | null>(null)
+  const [notifyBusy, setNotifyBusy] = useState<number | null>(null)
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null)
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
@@ -96,6 +113,11 @@ export function AdminDashboard() {
     })
   }, [equipment, equipmentSearch])
 
+  const overdueActive = useMemo(
+    () => active.filter((l) => loanIsOverdue(l)),
+    [active],
+  )
+
   const adminStats = useMemo(() => {
     const disponivel = equipment.filter((e) => e.status === 'disponivel').length
     const emprestado = equipment.filter((e) => e.status === 'emprestado').length
@@ -107,9 +129,10 @@ export function AdminDashboard() {
       manutencao,
       pendingLoans: pendingLoans.length,
       activeLoans: active.length,
+      overdueLoans: overdueActive.length,
       historyLoans: finished.length + rejected.length,
     }
-  }, [equipment, pendingLoans, active, finished, rejected])
+  }, [equipment, pendingLoans, active, finished, rejected, overdueActive])
 
   const distribPct = useMemo(() => {
     const t = adminStats.total
@@ -200,6 +223,20 @@ export function AdminDashboard() {
     }
   }
 
+  async function notifyOverdue(loanId: number) {
+    setNotifyBusy(loanId)
+    setMsg(null)
+    setErr(null)
+    try {
+      await loansApi.notifyOverdue(loanId)
+      setMsg('Notificação de atraso enviada ao tomador.')
+    } catch (er) {
+      setErr(er instanceof Error ? er.message : 'Erro ao notificar')
+    } finally {
+      setNotifyBusy(null)
+    }
+  }
+
   async function rejectPending(loanId: number) {
     setLoanActionBusy(loanId)
     setMsg(null)
@@ -215,202 +252,314 @@ export function AdminDashboard() {
     }
   }
 
+  const headerSubtitle = `${equipment.length} ${equipment.length === 1 ? 'item' : 'itens'} · ${
+    pendingLoans.length === 0
+      ? 'nenhuma solicitação pendente'
+      : pendingLoans.length === 1
+        ? '1 solicitação pendente'
+        : `${pendingLoans.length} solicitações pendentes`
+  } · ${
+    active.length === 0
+      ? 'nenhum empréstimo ativo'
+      : active.length === 1
+        ? '1 empréstimo ativo'
+        : `${active.length} empréstimos ativos`
+  }`
+
+  const kpiItems = useMemo(
+    () => [
+      { label: 'Itens no acervo', value: adminStats.total, hint: 'Total cadastrado' },
+      {
+        label: 'Disponíveis',
+        value: adminStats.disponivel,
+        hint: 'Podem receber pedido',
+        variant: 'ok' as const,
+      },
+      {
+        label: 'Pedidos pendentes',
+        value: adminStats.pendingLoans,
+        hint: 'Aguardam decisão',
+        variant: adminStats.pendingLoans ? ('warn' as const) : ('default' as const),
+      },
+      {
+        label: 'Empréstimos ativos',
+        value: adminStats.activeLoans,
+        hint: 'Em curso com tomador',
+      },
+      {
+        label: 'Em atraso',
+        value: adminStats.overdueLoans,
+        hint: `Multa R$ ${FINE_PER_DAY_BRL}/dia`,
+        variant: adminStats.overdueLoans ? ('danger' as const) : ('default' as const),
+      },
+    ],
+    [adminStats],
+  )
+
   if (loading) {
-    return <DashboardSkeleton />
+    return <DashboardSkeleton variant="admin" />
   }
 
   return (
-    <div className="stack gap-lg">
-      <header className="page-intro page-intro-row">
-        <div>
-          <h2>Patrimônio e empréstimos</h2>
-          <p className="muted">
-            {equipment.length} {equipment.length === 1 ? 'item' : 'itens'} ·{' '}
-            {pendingLoans.length === 0
-              ? 'nenhuma solicitação pendente'
-              : pendingLoans.length === 1
-                ? '1 solicitação pendente'
-                : `${pendingLoans.length} solicitações pendentes`}
-            {' · '}
-            {active.length === 0
-              ? 'nenhum empréstimo ativo'
-              : active.length === 1
-                ? '1 empréstimo ativo'
-                : `${active.length} empréstimos ativos`}
-          </p>
-        </div>
-        <div className="page-intro-actions">
-          <button
-            type="button"
-            className="btn"
-            onClick={() => void load({ silent: true })}
-            disabled={refreshing}
-            aria-busy={refreshing}
-          >
-            {refreshing ? 'Atualizando…' : 'Atualizar dados'}
-          </button>
-          {lastLoadedAt ? (
-            <p className="sync-hint muted tiny" aria-live="polite">
-              Atualizado às{' '}
-              {lastLoadedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </p>
-          ) : null}
-        </div>
-      </header>
+    <DashboardLayout animateKey={hasLoadedOnce ? 'ready' : 'loading'}>
+      <PageHeader
+        title="Patrimônio e empréstimos"
+        subtitle={headerSubtitle}
+        role="admin"
+        refreshing={refreshing}
+        lastLoadedAt={lastLoadedAt}
+        onRefresh={() => void load({ silent: true })}
+      />
 
-      {msg ? (
-        <div className="flash-row" role="status">
-          <p className="success flash-msg">{msg}</p>
-          <button type="button" className="btn ghost btn-dismiss" onClick={() => setMsg(null)}>
-            Fechar
-          </button>
-        </div>
-      ) : null}
-      {err ? (
-        <div className="error-banner" role="alert">
-          <p className="error error-flat">{err}</p>
-          <div className="flash-actions-inline">
-            <button type="button" className="btn ghost btn-dismiss" onClick={() => setErr(null)}>
-              Fechar
-            </button>
-            <button type="button" className="btn primary btn-compact" onClick={() => void load()}>
-              Tentar de novo
-            </button>
+      <PageAlerts
+        msg={msg}
+        err={err}
+        onDismissMsg={() => setMsg(null)}
+        onDismissErr={() => setErr(null)}
+        onRetry={() => void load()}
+      />
+
+      <KpiStrip items={kpiItems} layout="admin" />
+
+      <div className="dashboard-queue-grid">
+        <SectionCard
+          id="pending-loans"
+          title="Solicitações pendentes"
+          badge={pendingLoans.length || undefined}
+          badgeVariant={pendingLoans.length ? 'warn' : 'default'}
+        >
+          <ResponsiveDataView
+            caption="Pedidos de empréstimo a aprovar"
+            rows={pendingLoans}
+            rowKey={(l) => l.id}
+            columns={[
+              { key: 'eq', header: 'Equipamento', render: (l) => l.equipment?.name ?? '—' },
+              {
+                key: 'borrower',
+                header: 'Tomador',
+                render: (l) => l.borrower?.full_name ?? l.borrower?.email ?? '—',
+              },
+              { key: 'created', header: 'Pedido em', render: (l) => fmtDateTime(l.created_at) },
+              { key: 'pickup', header: 'Retirada', priority: 'low', render: (l) => fmtDateOnly(l.pickup_at) },
+              { key: 'due', header: 'Devolução', priority: 'low', render: (l) => fmtDateOnly(l.due_at) },
+              {
+                key: 'actions',
+                header: 'Ações',
+                render: (l) => {
+                  const busy = loanActionBusy === l.id
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" disabled={busy} onClick={() => void approvePending(l.id)}>
+                        {busy ? '…' : 'Aprovar'}
+                      </Button>
+                      <Button size="sm" variant="outline" disabled={busy} onClick={() => void rejectPending(l.id)}>
+                        Recusar
+                      </Button>
+                    </div>
+                  )
+                },
+              },
+            ]}
+            empty={
+              <EmptyState
+                subtle
+                text="Nenhum pedido aguardando aprovação no momento."
+              />
+            }
+            renderCard={(l) => {
+              const busy = loanActionBusy === l.id
+              return (
+                <>
+                  <DataCardRow label="Equipamento">{l.equipment?.name ?? '—'}</DataCardRow>
+                  <DataCardRow label="Tomador">
+                    {l.borrower?.full_name ?? l.borrower?.email ?? '—'}
+                  </DataCardRow>
+                  <DataCardRow label="Pedido em">{fmtDateTime(l.created_at)}</DataCardRow>
+                  <DataCardRow label="Retirada">{fmtDateOnly(l.pickup_at)}</DataCardRow>
+                  <DataCardRow label="Devolução">{fmtDateOnly(l.due_at)}</DataCardRow>
+                  <DataCardFooter>
+                    <Button size="sm" disabled={busy} onClick={() => void approvePending(l.id)}>
+                      {busy ? '…' : 'Aprovar'}
+                    </Button>
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => void rejectPending(l.id)}>
+                      Recusar
+                    </Button>
+                  </DataCardFooter>
+                </>
+              )
+            }}
+          />
+        </SectionCard>
+
+        <SectionCard
+          id="loans-active"
+          title="Empréstimos ativos"
+          badge={active.length || undefined}
+          badgeVariant={adminStats.overdueLoans ? 'danger' : 'default'}
+        >
+          <ResponsiveDataView
+            caption="Empréstimos em curso"
+            rows={active}
+            rowKey={(l) => l.id}
+            rowClassName={(l) => (loanIsOverdue(l) ? 'row-alert' : undefined)}
+            columns={[
+              { key: 'eq', header: 'Equipamento', render: (l) => l.equipment?.name ?? '—' },
+              {
+                key: 'borrower',
+                header: 'Tomador',
+                render: (l) => l.borrower?.full_name ?? l.borrower?.email ?? '—',
+              },
+              { key: 'approved', header: 'Retirada efetiva', render: (l) => fmtApprovedAt(l.approved_at) },
+              {
+                key: 'due',
+                header: 'Devolver até',
+                render: (l) => {
+                  const overdue = loanIsOverdue(l)
+                  return (
+                    <span className={overdue ? 'text-alert' : undefined}>{fmtDateOnly(l.due_at)}</span>
+                  )
+                },
+              },
+              {
+                key: 'overdue',
+                header: 'Atraso',
+                priority: 'low',
+                render: (l) => {
+                  const overdue = loanIsOverdue(l)
+                  const days = loanDaysOverdue(l)
+                  return overdue ? `${days} dia${days === 1 ? '' : 's'}` : '—'
+                },
+              },
+              {
+                key: 'fine',
+                header: 'Multa',
+                priority: 'low',
+                render: (l) => (loanIsOverdue(l) ? fmtBrl(loanFineAmount(l)) : '—'),
+              },
+              {
+                key: 'block',
+                header: 'Bloqueio',
+                priority: 'low',
+                render: (l) =>
+                  loanEquipmentBlocked(l) ? (
+                    <span className="pill pill-danger">Bloqueado</span>
+                  ) : (
+                    <span className="pill pill-ok">Liberado</span>
+                  ),
+              },
+              {
+                key: 'action',
+                header: 'Ação',
+                render: (l) => {
+                  const overdue = loanIsOverdue(l)
+                  const notifying = notifyBusy === l.id
+                  return overdue ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={notifying}
+                      onClick={() => void notifyOverdue(l.id)}
+                    >
+                      {notifying ? '…' : 'Notificar'}
+                    </Button>
+                  ) : (
+                    '—'
+                  )
+                },
+              },
+            ]}
+            empty={<EmptyState subtle text="Nenhum equipamento emprestado no momento." />}
+            renderCard={(l) => {
+              const overdue = loanIsOverdue(l)
+              const days = loanDaysOverdue(l)
+              const fine = loanFineAmount(l)
+              const blocked = loanEquipmentBlocked(l)
+              const notifying = notifyBusy === l.id
+              return (
+                <>
+                  <DataCardRow label="Equipamento">{l.equipment?.name ?? '—'}</DataCardRow>
+                  <DataCardRow label="Tomador">
+                    {l.borrower?.full_name ?? l.borrower?.email ?? '—'}
+                  </DataCardRow>
+                  <DataCardRow label="Devolver até">
+                    <span className={overdue ? 'text-alert' : undefined}>{fmtDateOnly(l.due_at)}</span>
+                  </DataCardRow>
+                  {overdue ? (
+                    <>
+                      <DataCardRow label="Atraso">{`${days} dia${days === 1 ? '' : 's'}`}</DataCardRow>
+                      <DataCardRow label="Multa">{fmtBrl(fine)}</DataCardRow>
+                    </>
+                  ) : null}
+                  <DataCardRow label="Bloqueio">
+                    {blocked ? (
+                      <span className="pill pill-danger">Bloqueado</span>
+                    ) : (
+                      <span className="pill pill-ok">Liberado</span>
+                    )}
+                  </DataCardRow>
+                  {overdue ? (
+                    <DataCardFooter>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={notifying}
+                        onClick={() => void notifyOverdue(l.id)}
+                      >
+                        {notifying ? '…' : 'Notificar tomador'}
+                      </Button>
+                    </DataCardFooter>
+                  ) : null}
+                </>
+              )
+            }}
+          />
+        </SectionCard>
+      </div>
+
+      {adminStats.total > 0 ? (
+        <SectionCard id="admin-dist" title="Distribuição do acervo" className="card--compact">
+          <div className="metric-bars-inline">
+            <div className="metric-bar-row">
+              <div className="metric-bar-label">
+                <span>Disponíveis</span>
+                <span>{distribPct.disponivel}%</span>
+              </div>
+              <div className="metric-bar-track">
+                <div
+                  className="metric-bar-fill metric-bar-fill--ok"
+                  style={{ width: `${distribPct.disponivel}%` }}
+                />
+              </div>
+            </div>
+            <div className="metric-bar-row">
+              <div className="metric-bar-label">
+                <span>Emprestados</span>
+                <span>{distribPct.emprestado}%</span>
+              </div>
+              <div className="metric-bar-track">
+                <div
+                  className="metric-bar-fill metric-bar-fill--busy"
+                  style={{ width: `${distribPct.emprestado}%` }}
+                />
+              </div>
+            </div>
+            <div className="metric-bar-row">
+              <div className="metric-bar-label">
+                <span>Manutenção</span>
+                <span>{distribPct.manutencao}%</span>
+              </div>
+              <div className="metric-bar-track">
+                <div
+                  className="metric-bar-fill metric-bar-fill--warn"
+                  style={{ width: `${distribPct.manutencao}%` }}
+                />
+              </div>
+            </div>
           </div>
-        </div>
+        </SectionCard>
       ) : null}
 
-      <div className="stat-grid" aria-label="Resumo do acervo e empréstimos">
-        <div className="stat-tile">
-          <p className="stat-tile-value">{adminStats.total}</p>
-          <span className="stat-tile-label">Itens no acervo</span>
-          <p className="stat-tile-hint">Total cadastrado</p>
-        </div>
-        <div className="stat-tile stat-tile--ok">
-          <p className="stat-tile-value">{adminStats.disponivel}</p>
-          <span className="stat-tile-label">Disponíveis</span>
-          <p className="stat-tile-hint">Podem receber pedido</p>
-        </div>
-        <div className="stat-tile">
-          <p className="stat-tile-value">{adminStats.emprestado}</p>
-          <span className="stat-tile-label">Emprestados</span>
-          <p className="stat-tile-hint">Situação do património</p>
-        </div>
-        <div className="stat-tile stat-tile--warn">
-          <p className="stat-tile-value">{adminStats.manutencao}</p>
-          <span className="stat-tile-label">Manutenção</span>
-          <p className="stat-tile-hint">Indisponíveis para pedido</p>
-        </div>
-        <div className={`stat-tile${adminStats.pendingLoans ? ' stat-tile--warn' : ''}`}>
-          <p className="stat-tile-value">{adminStats.pendingLoans}</p>
-          <span className="stat-tile-label">Pedidos pendentes</span>
-          <p className="stat-tile-hint">Aguardam aprovação ou recusa</p>
-        </div>
-        <div className="stat-tile">
-          <p className="stat-tile-value">{adminStats.activeLoans}</p>
-          <span className="stat-tile-label">Empréstimos ativos</span>
-          <p className="stat-tile-hint">Em curso com tomador</p>
-        </div>
-        <div className="stat-tile">
-          <p className="stat-tile-value">{adminStats.historyLoans}</p>
-          <span className="stat-tile-label">Registos encerrados</span>
-          <p className="stat-tile-hint">Finalizados + recusados</p>
-        </div>
-      </div>
-
-      <div className="dashboard-panels">
-        <section className="card" aria-labelledby="admin-dist-title">
-          <h3 id="admin-dist-title">Distribuição do acervo</h3>
-          {adminStats.total === 0 ? (
-            <p className="muted">Cadastre itens para visualizar percentagens em relação ao total.</p>
-          ) : (
-            <>
-              <p className="muted tiny admin-dist-lede">
-                Relativo a <strong>{adminStats.total}</strong> {adminStats.total === 1 ? 'item' : 'itens'} no acervo.
-              </p>
-              <div className="metric-bar-row">
-                <div className="metric-bar-label">
-                  <span>Disponíveis</span>
-                  <span>{distribPct.disponivel}%</span>
-                </div>
-                <div className="metric-bar-track">
-                  <div
-                    className="metric-bar-fill metric-bar-fill--ok"
-                    style={{ width: `${distribPct.disponivel}%` }}
-                  />
-                </div>
-              </div>
-              <div className="metric-bar-row">
-                <div className="metric-bar-label">
-                  <span>Emprestados</span>
-                  <span>{distribPct.emprestado}%</span>
-                </div>
-                <div className="metric-bar-track">
-                  <div
-                    className="metric-bar-fill metric-bar-fill--busy"
-                    style={{ width: `${distribPct.emprestado}%` }}
-                  />
-                </div>
-              </div>
-              <div className="metric-bar-row">
-                <div className="metric-bar-label">
-                  <span>Manutenção</span>
-                  <span>{distribPct.manutencao}%</span>
-                </div>
-                <div className="metric-bar-track">
-                  <div
-                    className="metric-bar-fill metric-bar-fill--warn"
-                    style={{ width: `${distribPct.manutencao}%` }}
-                  />
-                </div>
-              </div>
-            </>
-          )}
-        </section>
-        <section className="card" aria-labelledby="admin-decision-title">
-          <h3 id="admin-decision-title">Decisão e rastreabilidade</h3>
-          <p className="info-panel">
-            Cada pedido pendente mostra o tomador, datas e o <strong>aceite do termo</strong> com carimbo de tempo e
-            versão — útil para auditoria mínima neste protótipo.
-          </p>
-          <p className="info-panel">
-            Ao <strong>aprovar</strong>, confirme que o equipamento está fisicamente disponível; ao <strong>recusar</strong>, o
-            item permanece disponível para outros pedidos (salvo outra situação no acervo).
-          </p>
-          <p className="info-callout">
-            Alterações manuais de situação (disponível / emprestado / manutenção) pedem confirmação para evitar erros de
-            operação.
-          </p>
-        </section>
-      </div>
-
-      <div className="dashboard-panels">
-        <section className="card" aria-labelledby="admin-pipeline-title">
-          <h3 id="admin-pipeline-title">Pipeline de decisão</h3>
-          <p className="info-panel">
-            Cada pedido percorre: <strong>solicitação</strong> (com termo) → <strong>aprovação ou recusa</strong> pelo
-            administrador → <strong>uso</strong> pelo solicitante → <strong>devolução</strong> registada. A situação do
-            equipamento no acervo (disponível / emprestado / manutenção) deve refletir a realidade do laboratório.
-          </p>
-          <p className="info-callout">
-            Priorize a fila <strong>Solicitações pendentes</strong> antes de alterar património à mão, para não
-            conflituar com pedidos em análise.
-          </p>
-        </section>
-        <section className="card" aria-labelledby="admin-checklist-title">
-          <h3 id="admin-checklist-title">Checklist do operador</h3>
-          <ul className="info-checklist">
-            <li>Rever pedidos pendentes e validar datas de devolução pedidas.</li>
-            <li>Confirmar aceite do termo e versão antes de aprovar.</li>
-            <li>Após aprovação, conferir se a situação do equipamento ficou coerente (emprestado).</li>
-            <li>Registar manutenções no acervo para bloquear novos pedidos ao item.</li>
-            <li>Usar a busca no acervo quando o NRDT tiver muitos patrimónios.</li>
-          </ul>
-        </section>
-      </div>
-
-      <section className="card" aria-labelledby="new-eq-title">
-        <h3 id="new-eq-title">Incluir item no acervo</h3>
+      <SectionCard id="new-eq" title="Incluir item no acervo">
         <form onSubmit={addEquipment} className="stack">
           <div className="grid-2">
             <div>
@@ -446,262 +595,114 @@ export function AdminDashboard() {
               onChange={(e) => setDesc(e.target.value)}
             />
           </div>
-          <button type="submit" className="btn primary" disabled={saving}>
+          <Button type="submit" disabled={saving}>
             {saving ? 'Salvando…' : 'Cadastrar item'}
-          </button>
+          </Button>
         </form>
-      </section>
+      </SectionCard>
 
-      <section className="card" aria-labelledby="eq-list-title">
-        <h3 id="eq-list-title">Itens cadastrados</h3>
+      <SectionCard id="eq-list" title="Itens cadastrados" badge={equipment.length || undefined}>
         <div className="stack equipment-search-block">
           <label htmlFor="eq-search">Buscar no acervo</label>
-          <input
-            id="eq-search"
-            type="search"
-            autoComplete="off"
-            placeholder="Nome, patrimônio ou observação…"
-            value={equipmentSearch}
-            onChange={(e) => setEquipmentSearch(e.target.value)}
-          />
+          <div className="equipment-search-wrap">
+            <svg className="equipment-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="6" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M16 16l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <input
+              id="eq-search"
+              type="search"
+              autoComplete="off"
+              placeholder="Nome, patrimônio ou observação…"
+              value={equipmentSearch}
+              onChange={(e) => setEquipmentSearch(e.target.value)}
+            />
+          </div>
         </div>
         {!hasLoadedOnce && err ? (
           <p className="muted section-retry-hint">Lista indisponível até a conexão com a API ser restabelecida.</p>
         ) : hasLoadedOnce && equipment.length === 0 ? (
-          <div className="empty-state">
-            <p className="empty-state-title">Acervo vazio</p>
-            <p className="empty-state-text">Cadastre o primeiro equipamento usando o formulário acima.</p>
-          </div>
+          <EmptyState
+            title="Acervo vazio"
+            text="Cadastre o primeiro equipamento usando o formulário acima."
+          />
         ) : hasLoadedOnce && filteredEquipment.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-text">Nenhum item corresponde à busca. Limpe o filtro ou tente outro termo.</p>
-          </div>
+          <EmptyState subtle text="Nenhum item corresponde à busca. Limpe o filtro ou tente outro termo." />
         ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <caption className="sr-only">Lista de equipamentos cadastrados</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Nome</th>
-                  <th scope="col">Patrimônio</th>
-                  <th scope="col">Situação</th>
-                  <th scope="col">Alterar situação</th>
-                  <th scope="col">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEquipment.map((eq) => (
-                  <tr key={eq.id}>
-                    <td>
-                      <span className="cell-title">{eq.name}</span>
-                      {eq.description ? <span className="cell-sub muted">{eq.description}</span> : null}
-                    </td>
-                    <td>
-                      <code className="patrimony-code">{eq.inventory_code}</code>
-                    </td>
-                    <td>
-                      <EquipmentStatusPill status={eq.status} />
-                    </td>
-                    <td>
-                      <label htmlFor={`st-${eq.id}`} className="sr-only">
-                        Alterar situação de {eq.name}
-                      </label>
-                      <select
-                        id={`st-${eq.id}`}
-                        className="select-inline"
-                        value={pendingStatus?.id === eq.id ? pendingStatus.to : eq.status}
-                        onChange={(e) => void onStatusSelectChange(eq, e.target.value as EquipmentStatus)}
-                      >
-                        <option value="disponivel">Disponível</option>
-                        <option value="emprestado">Emprestado</option>
-                        <option value="manutencao">Manutenção</option>
-                      </select>
-                    </td>
-                    <td>
-                      <button type="button" className="btn btn-table" onClick={() => setEditing(eq)}>
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="equipment-acervo-grid">
+            {filteredEquipment.map((eq) => (
+              <li key={eq.id} className="equipment-acervo-card">
+                <div className="equipment-acervo-card-head">
+                  <div>
+                    <span className="cell-title">{eq.name}</span>
+                    {eq.description ? <p className="cell-sub muted tiny">{eq.description}</p> : null}
+                  </div>
+                  <EquipmentStatusPill status={eq.status} />
+                </div>
+                <code className="patrimony-code">{eq.inventory_code}</code>
+                <div className="equipment-acervo-card-actions">
+                  <label htmlFor={`st-${eq.id}`} className="sr-only">
+                    Alterar situação de {eq.name}
+                  </label>
+                  <select
+                    id={`st-${eq.id}`}
+                    className="select-inline"
+                    value={pendingStatus?.id === eq.id ? pendingStatus.to : eq.status}
+                    onChange={(e) => void onStatusSelectChange(eq, e.target.value as EquipmentStatus)}
+                  >
+                    <option value="disponivel">Disponível</option>
+                    <option value="emprestado">Emprestado</option>
+                    <option value="manutencao">Manutenção</option>
+                  </select>
+                  <Button type="button" variant="outline" size="sm" onClick={() => setEditing(eq)}>
+                    Editar
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
-      </section>
+      </SectionCard>
 
-      <section className="card" aria-labelledby="pending-loans-title">
-        <h3 id="pending-loans-title">Solicitações pendentes</h3>
-        {pendingLoans.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-text">Nenhum pedido aguardando aprovação no momento.</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <caption className="sr-only">Pedidos de empréstimo a aprovar</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Equipamento</th>
-                  <th scope="col">Tomador</th>
-                  <th scope="col">Pedido em</th>
-                  <th scope="col">Retirada prevista</th>
-                  <th scope="col">Devolução prevista</th>
-                  <th scope="col">Aceite do termo</th>
-                  <th scope="col">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingLoans.map((l) => {
-                  const busy = loanActionBusy === l.id
-                  return (
-                    <tr key={l.id}>
-                      <td>{l.equipment?.name ?? '—'}</td>
-                      <td>{l.borrower?.full_name ?? l.borrower?.email ?? '—'}</td>
-                      <td>{fmtDateTime(l.created_at)}</td>
-                      <td>{fmtDateOnly(l.pickup_at)}</td>
-                      <td>{fmtDateOnly(l.due_at)}</td>
-                      <td>
-                        {l.terms_accepted_at ? (
-                          <span className="cell-sub">
-                            {fmtDateTime(l.terms_accepted_at)}
-                            {l.terms_version ? (
-                              <>
-                                {' '}
-                                · versão <code className="patrimony-code">{l.terms_version}</code>
-                              </>
-                            ) : null}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td>
-                        <div className="flash-actions-inline">
-                          <button
-                            type="button"
-                            className="btn primary btn-table"
-                            disabled={busy}
-                            onClick={() => void approvePending(l.id)}
-                          >
-                            {busy ? '…' : 'Aprovar'}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-table"
-                            disabled={busy}
-                            onClick={() => void rejectPending(l.id)}
-                          >
-                            Recusar
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="card" aria-labelledby="loans-title">
-        <h3 id="loans-title">Empréstimos ativos</h3>
-        {active.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-text">Nenhum equipamento emprestado no momento.</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <caption className="sr-only">Empréstimos em curso</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Equipamento</th>
-                  <th scope="col">Tomador</th>
-                  <th scope="col">Retirada efetiva</th>
-                  <th scope="col">Devolver até</th>
-                </tr>
-              </thead>
-              <tbody>
-                {active.map((l) => {
-                  const overdue = isLoanOverdue(l.due_at, l.status)
-                  return (
-                    <tr key={l.id} className={overdue ? 'row-alert' : undefined}>
-                      <td>{l.equipment?.name ?? '—'}</td>
-                      <td>{l.borrower?.full_name ?? l.borrower?.email ?? '—'}</td>
-                      <td>{fmtApprovedAt(l.approved_at)}</td>
-                      <td>
-                        <span className={overdue ? 'text-alert' : undefined}>{fmtDateOnly(l.due_at)}</span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="card" aria-labelledby="history-title">
-        <h3 id="history-title">Histórico de empréstimos</h3>
-        {finished.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-text">Ainda não há empréstimos encerrados registrados.</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <caption className="sr-only">Empréstimos já devolvidos</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Equipamento</th>
-                  <th scope="col">Tomador</th>
-                  <th scope="col">Retirada efetiva</th>
-                  <th scope="col">Devolução prevista</th>
-                  <th scope="col">Devolvido em</th>
-                </tr>
-              </thead>
-              <tbody>
-                {finished.map((l) => (
-                  <tr key={l.id}>
-                    <td>{l.equipment?.name ?? '—'}</td>
-                    <td>{l.borrower?.full_name ?? l.borrower?.email ?? '—'}</td>
-                    <td>{fmtApprovedAt(l.approved_at)}</td>
-                    <td>{fmtDateOnly(l.due_at)}</td>
-                    <td>{l.returned_at ? fmtDateTime(l.returned_at) : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="card" aria-labelledby="admin-api-title">
-        <h3 id="admin-api-title">Referência da API e relatório</h3>
-        <p className="info-panel">
-          Com o backend em execução neste computador, pode consultar rotas e esquemas em{' '}
-          <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
-            http://127.0.0.1:8000/docs
-          </a>{' '}
-          (Swagger). Útil para alinhar o protótipo com o texto do relatório DAC ou para demonstrar integração na banca.
-        </p>
-        <p className="info-panel">
-          Os dados exibidos nas tabelas podem ser correlacionados com as respostas JSON dos endpoints de equipamentos e
-          empréstimos; não há exportação CSV nesta versão — use capturas de tela ou a documentação OpenAPI como anexo.
-        </p>
-      </section>
-
-      <section className="card" aria-labelledby="admin-ops-title">
-        <h3 id="admin-ops-title">Operação diária sugerida</h3>
-        <ol className="info-checklist">
-          <li>Abrir <strong>Solicitações pendentes</strong> e decidir a fila antes de alterar património manualmente.</li>
-          <li>Rever <strong>Empréstimos ativos</strong> com prazo a expirar e avisar o tomador se necessário (fora do âmbito do sistema).</li>
-          <li>Após manutenção real, voltar o item a <strong>Disponível</strong> para liberar novos pedidos.</li>
-          <li>Consultar <strong>Pedidos recusados</strong> se houver dúvidas sobre pedidos duplicados ou datas inviáveis.</li>
-        </ol>
-      </section>
+      <SectionCard
+        id="history"
+        title="Histórico de empréstimos"
+        badge={finished.length || undefined}
+        defaultCollapsed
+      >
+        <ResponsiveDataView
+          caption="Empréstimos já devolvidos"
+          rows={finished}
+          rowKey={(l) => l.id}
+          columns={[
+            { key: 'eq', header: 'Equipamento', render: (l) => l.equipment?.name ?? '—' },
+            {
+              key: 'borrower',
+              header: 'Tomador',
+              render: (l) => l.borrower?.full_name ?? l.borrower?.email ?? '—',
+            },
+            { key: 'approved', header: 'Retirada efetiva', render: (l) => fmtApprovedAt(l.approved_at) },
+            { key: 'due', header: 'Devolução prevista', priority: 'low', render: (l) => fmtDateOnly(l.due_at) },
+            {
+              key: 'returned',
+              header: 'Devolvido em',
+              render: (l) => (l.returned_at ? fmtDateTime(l.returned_at) : '—'),
+            },
+          ]}
+          empty={<EmptyState subtle text="Ainda não há empréstimos encerrados registrados." />}
+          renderCard={(l) => (
+            <>
+              <DataCardRow label="Equipamento">{l.equipment?.name ?? '—'}</DataCardRow>
+              <DataCardRow label="Tomador">
+                {l.borrower?.full_name ?? l.borrower?.email ?? '—'}
+              </DataCardRow>
+              <DataCardRow label="Devolvido em">
+                {l.returned_at ? fmtDateTime(l.returned_at) : '—'}
+              </DataCardRow>
+            </>
+          )}
+        />
+      </SectionCard>
 
       <ConfirmDialog
         open={!!pendingStatus}
@@ -722,56 +723,43 @@ export function AdminDashboard() {
         ) : null}
       </ConfirmDialog>
 
-      <section className="card" aria-labelledby="rejected-title">
-        <h3 id="rejected-title">Pedidos recusados</h3>
-        {rejected.length === 0 ? (
-          <div className="empty-state empty-state-subtle">
-            <p className="empty-state-text">Nenhum pedido recusado registrado.</p>
-          </div>
-        ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <caption className="sr-only">Solicitações recusadas</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Equipamento</th>
-                  <th scope="col">Tomador</th>
-                  <th scope="col">Pedido em</th>
-                  <th scope="col">Retirada prevista</th>
-                  <th scope="col">Devolução prevista</th>
-                  <th scope="col">Aceite do termo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rejected.map((l) => (
-                  <tr key={l.id}>
-                    <td>{l.equipment?.name ?? '—'}</td>
-                    <td>{l.borrower?.full_name ?? l.borrower?.email ?? '—'}</td>
-                    <td>{fmtDateTime(l.created_at)}</td>
-                    <td>{fmtDateOnly(l.pickup_at)}</td>
-                    <td>{fmtDateOnly(l.due_at)}</td>
-                    <td>
-                      {l.terms_accepted_at ? (
-                        <span className="cell-sub">
-                          {fmtDateTime(l.terms_accepted_at)}
-                          {l.terms_version ? (
-                            <>
-                              {' '}
-                              · <code className="patrimony-code">{l.terms_version}</code>
-                            </>
-                          ) : null}
-                        </span>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <SectionCard
+        id="rejected"
+        title="Pedidos recusados"
+        badge={rejected.length || undefined}
+        defaultCollapsed
+      >
+        <ResponsiveDataView
+          caption="Solicitações recusadas"
+          rows={rejected}
+          rowKey={(l) => l.id}
+          columns={[
+            { key: 'eq', header: 'Equipamento', render: (l) => l.equipment?.name ?? '—' },
+            {
+              key: 'borrower',
+              header: 'Tomador',
+              render: (l) => l.borrower?.full_name ?? l.borrower?.email ?? '—',
+            },
+            { key: 'created', header: 'Pedido em', render: (l) => fmtDateTime(l.created_at) },
+            { key: 'pickup', header: 'Retirada', priority: 'low', render: (l) => fmtDateOnly(l.pickup_at) },
+            { key: 'due', header: 'Devolução', priority: 'low', render: (l) => fmtDateOnly(l.due_at) },
+          ]}
+          empty={<EmptyState subtle text="Nenhum pedido recusado registrado." />}
+          renderCard={(l) => (
+            <>
+              <DataCardRow label="Equipamento">{l.equipment?.name ?? '—'}</DataCardRow>
+              <DataCardRow label="Tomador">
+                {l.borrower?.full_name ?? l.borrower?.email ?? '—'}
+              </DataCardRow>
+              <DataCardRow label="Pedido em">{fmtDateTime(l.created_at)}</DataCardRow>
+            </>
+          )}
+        />
+      </SectionCard>
+
+      <div id="admin-rules">
+        <BusinessRulesPanel role="admin" sections={ADMIN_BUSINESS_RULES} />
+      </div>
 
       <EditEquipmentDialog
         key={editing ? `eq-${editing.id}` : 'eq-closed'}
@@ -782,6 +770,6 @@ export function AdminDashboard() {
         onSave={saveEdit}
         busy={editBusy}
       />
-    </div>
+    </DashboardLayout>
   )
 }

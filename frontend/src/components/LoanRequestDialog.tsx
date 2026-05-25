@@ -24,7 +24,7 @@ export function LoanRequestDialog({ equipment, onDismiss, onSubmitLoan }: Props)
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const minPickup = minDateValue()
+  const minPickup = useMemo(() => minDateValue(), [equipment, step])
   const minDue = useMemo(
     () => (pickup.trim() ? addDaysToDateInput(pickup, MIN_LOAN_DAYS) : minPickup),
     [pickup, minPickup],
@@ -64,8 +64,8 @@ export function LoanRequestDialog({ equipment, onDismiss, onSubmitLoan }: Props)
     }
   }, [equipment])
 
-  function applyDateValidation(): boolean {
-    const validationErr = validateLoanDateInputs(pickup, due)
+  function applyDateValidation(pickupVal: string, dueVal: string): boolean {
+    const validationErr = validateLoanDateInputs(pickupVal, dueVal)
     if (validationErr) {
       setErr(validationErr)
       return false
@@ -75,7 +75,7 @@ export function LoanRequestDialog({ equipment, onDismiss, onSubmitLoan }: Props)
   }
 
   function goStep2() {
-    if (!applyDateValidation()) return
+    if (!applyDateValidation(pickup, due)) return
     setStep(2)
   }
 
@@ -84,7 +84,7 @@ export function LoanRequestDialog({ equipment, onDismiss, onSubmitLoan }: Props)
       setErr('É necessário ler e aceitar o termo de responsabilidade para enviar o pedido.')
       return
     }
-    if (!applyDateValidation()) {
+    if (!applyDateValidation(pickup, due)) {
       setStep(1)
       return
     }
@@ -150,15 +150,15 @@ export function LoanRequestDialog({ equipment, onDismiss, onSubmitLoan }: Props)
                     value={pickup}
                     aria-invalid={!!err && step === 1}
                     onChange={(e) => {
-                      const v = e.target.value
-                      setPickup(v)
-                      if (due && v && due < addDaysToDateInput(v, MIN_LOAN_DAYS)) {
+                      const newPickup = e.target.value
+                      setPickup(newPickup)
+                      if (due && newPickup && due < addDaysToDateInput(newPickup, MIN_LOAN_DAYS)) {
                         setDue('')
                         setErr(
                           `A devolução deve ser pelo menos ${MIN_LOAN_DAYS} dias após a retirada. Escolha a data de devolução novamente.`,
                         )
-                      } else if (due && v) {
-                        applyDateValidation()
+                      } else if (due && newPickup) {
+                        applyDateValidation(newPickup, due)
                       } else {
                         setErr(null)
                       }
@@ -175,9 +175,10 @@ export function LoanRequestDialog({ equipment, onDismiss, onSubmitLoan }: Props)
                     disabled={!pickup.trim()}
                     aria-invalid={!!err && step === 1}
                     onChange={(e) => {
-                      setDue(e.target.value)
-                      if (pickup.trim() && e.target.value) {
-                        applyDateValidation()
+                      const newDue = e.target.value
+                      setDue(newDue)
+                      if (pickup.trim() && newDue) {
+                        applyDateValidation(pickup, newDue)
                       } else {
                         setErr(null)
                       }

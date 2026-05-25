@@ -72,3 +72,21 @@ class Loan(Base):
 
     equipment: Mapped["Equipment"] = relationship(back_populates="loans")
     borrower: Mapped["User"] = relationship(back_populates="loans")
+    notifications: Mapped[list["LoanNotification"]] = relationship(back_populates="loan")
+
+
+class LoanNotification(Base):
+    __tablename__ = "loan_notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    loan_id: Mapped[int] = mapped_column(ForeignKey("loans.id"), index=True)
+    recipient_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    sent_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    message: Mapped[str] = mapped_column(Text)
+    days_overdue: Mapped[int] = mapped_column(default=0)
+    fine_amount: Mapped[float] = mapped_column(default=0.0)
+    equipment_blocked: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    loan: Mapped["Loan"] = relationship(back_populates="notifications")

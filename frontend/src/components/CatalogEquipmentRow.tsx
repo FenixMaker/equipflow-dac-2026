@@ -6,9 +6,17 @@ type Props = {
   equipment: Equipment
   onShowDetail: () => void
   onStartRequest: () => void
+  requestDisabled?: boolean
+  requestDisabledTitle?: string
 }
 
-export function CatalogEquipmentRow({ equipment, onShowDetail, onStartRequest }: Props) {
+export function CatalogEquipmentRow({
+  equipment,
+  onShowDetail,
+  onStartRequest,
+  requestDisabled,
+  requestDisabledTitle,
+}: Props) {
   const raw = equipment.description?.trim() ?? ''
   const excerpt =
     raw.length === 0
@@ -30,7 +38,13 @@ export function CatalogEquipmentRow({ equipment, onShowDetail, onStartRequest }:
         <button type="button" className="btn btn-compact" onClick={onShowDetail}>
           Ver ficha
         </button>
-        <button type="button" className="btn primary btn-compact" onClick={onStartRequest}>
+        <button
+          type="button"
+          className="btn primary btn-compact"
+          onClick={onStartRequest}
+          disabled={requestDisabled}
+          title={requestDisabled ? requestDisabledTitle : undefined}
+        >
           Solicitar empréstimo
         </button>
       </div>

@@ -29,8 +29,28 @@ def _is_private_lan(ip: str) -> bool:
     if parts[0] == 192 and parts[1] == 168:
         return True
     if parts[0] == 172 and 16 <= parts[1] <= 31:
-        return False  # exclui Hyper-V / WSL típicos 172.16–31
+        return True
     return False
+
+
+def _is_virtual_adapter_name(name: str) -> bool:
+    lower = name.lower()
+    virtual_markers = (
+        "virtual",
+        "vethernet",
+        "hyper-v",
+        "wsl",
+        "virtualbox",
+        "vmware",
+        "docker",
+        "vbox",
+        "loopback",
+        "bluetooth",
+        "npcap",
+        "tap-windows",
+        "tunnel",
+    )
+    return any(m in lower for m in virtual_markers)
 
 
 def _interface_kind(name: str) -> str:
@@ -45,7 +65,7 @@ def _interface_kind(name: str) -> str:
 
 
 def _sort_iface_key(item: LanInterface) -> tuple[int, str]:
-    kind_order = {"ethernet": 0, "wifi": 1, "other": 2}
+    kind_order = {"wifi": 0, "ethernet": 1, "other": 2}
     ip = item["ip"]
     ip_order = 0 if ip.startswith("192.168.") else (1 if ip.startswith("10.") else 2)
     return (kind_order.get(item["kind"], 9), ip_order, ip)
@@ -80,6 +100,8 @@ def _ips_from_ipconfig_windows() -> list[LanInterface]:
                 if current_name.lower().startswith(prefix):
                     current_name = current_name[len(prefix) :]
                     break
+            if _is_virtual_adapter_name(current_name):
+                current_name = ""
             continue
         if not current_name:
             continue
@@ -124,7 +146,7 @@ def _ip_from_default_route() -> str | None:
 
 
 def get_lan_interfaces() -> list[LanInterface]:
-    """Interfaces LAN com IP privado (prioriza Ethernet no QR)."""
+    """Interfaces LAN com IP privado (prioriza Wi‑Fi no QR para celular na mesma rede)."""
     by_ip: dict[str, LanInterface] = {}
 
     if platform.system() == "Windows":
@@ -150,8 +172,19 @@ def pick_recommended_lan_ip() -> str | None:
     interfaces = get_lan_interfaces()
     if not interfaces:
         return None
-    for kind in ("ethernet", "wifi", "other"):
+    for kind in ("wifi", "ethernet", "other"):
         for item in interfaces:
             if item["kind"] == kind:
                 return item["ip"]
     return interfaces[0]["ip"]
+
+
+def get_lan_qr_hint() -> str | None:
+    """Dica para o painel de QR (ex.: notebook só no cabo, celular no Wi‑Fi)."""
+    interfaces = get_lan_interfaces()
+    if not interfaces:
+        return None
+    kinds = {item["kind"] for item in interfaces}
+    if "wifi" not in kinds and "ethernet" in kinds:
+        return "ethernet_only"
+    return None

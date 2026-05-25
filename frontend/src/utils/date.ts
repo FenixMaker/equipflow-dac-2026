@@ -34,19 +34,31 @@ function parseDateInput(dateStr: string): Date | null {
   return new Date(y, m - 1, d)
 }
 
+function startOfLocalDay(d: Date): Date {
+  const x = new Date(d)
+  x.setHours(0, 0, 0, 0)
+  return x
+}
+
 /** Valida retirada/devolução no formulário; retorna mensagem ou null. */
 export function validateLoanDateInputs(pickup: string, due: string): string | null {
-  if (!pickup.trim() || !due.trim()) {
+  const pickupNorm = pickup.trim()
+  const dueNorm = due.trim()
+  if (!pickupNorm || !dueNorm) {
     return 'Indique a data de retirada e a data de devolução.'
   }
-  const pickupD = parseDateInput(pickup)
-  const dueD = parseDateInput(due)
+  const pickupD = parseDateInput(pickupNorm)
+  const dueD = parseDateInput(dueNorm)
   if (!pickupD || !dueD) return 'Datas inválidas.'
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+
+  const today = startOfLocalDay(new Date())
+  const pickupDay = startOfLocalDay(pickupD)
+  if (pickupDay.getTime() < today.getTime()) {
+    return 'A data de retirada não pode ser anterior a hoje.'
+  }
+
   pickupD.setHours(0, 0, 0, 0)
   dueD.setHours(0, 0, 0, 0)
-  if (pickupD < today) return 'A data de retirada não pode ser anterior a hoje.'
   if (dueD <= pickupD) {
     return 'A data de devolução deve ser posterior à data de retirada (não pode ser no mesmo dia).'
   }

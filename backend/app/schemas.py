@@ -102,3 +102,22 @@ class LoanRead(BaseModel):
     terms_version: str | None
     equipment: EquipmentRead | None = None
     borrower: UserBrief | None = None
+    days_overdue: int = 0
+    fine_amount: float = 0.0
+    equipment_blocked: bool = False
+    borrower_blocked: bool = False
+
+
+class NotificationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    loan_id: int
+    recipient_id: int
+    sent_by_id: int | None
+    message: str
+    days_overdue: int
+    fine_amount: float
+    equipment_blocked: bool
+    created_at: datetime
+    read_at: datetime | None

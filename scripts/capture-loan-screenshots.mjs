@@ -45,8 +45,8 @@ async function main() {
   await waitForApp(page)
   await page.goto(base, { waitUntil: 'networkidle' })
 
-  await page.getByRole('button', { name: 'Conta solicitante' }).click()
-  await page.getByRole('button', { name: 'Entrar' }).click()
+  await page.getByRole('option', { name: 'Prof. Eduardo Rocha' }).click()
+  await page.getByRole('button', { name: /Entrar como Conta Selecionada/i }).click()
   await page.getByRole('heading', { name: /Equipamentos disponíveis/i }).waitFor({ timeout: 20000 })
 
   await page.getByRole('button', { name: 'Solicitar empréstimo' }).first().click()

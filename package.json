@@ -6,6 +6,7 @@
     "dev": "concurrently -n api,web -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "node scripts/run-backend.cjs",
     "dev:web": "cd frontend && npm run dev",
+    "screenshots": "node scripts/capture-screenshots.mjs --spawn",
     "screenshots:loan": "node scripts/capture-loan-screenshots.mjs"
   },
   "devDependencies": {

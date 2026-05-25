@@ -25,7 +25,7 @@ export function pickPreferredLanAddress(
 ): string | null {
   if (recommended && addresses.includes(recommended)) return recommended
   if (interfaces?.length) {
-    for (const kind of ['ethernet', 'wifi', 'other']) {
+    for (const kind of ['wifi', 'ethernet', 'other']) {
       const hit = interfaces.find((i) => i.kind === kind)
       if (hit) return hit.ip
     }

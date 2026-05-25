@@ -4,151 +4,207 @@
 **Semestre:** 05  
 **Componentes:** Autonomia Intelectual do Estudante; Programação Back End I; Programação Front End I; Redes de Computadores Aplicada; Tópicos Especiais em Análise de Sistemas: Tecnologias  
 **Professor referência:** Alexandre dos Santos Batista — RF 15881  
-**Título do projeto:** Plataforma web para controle de empréstimo de equipamentos — protótipo **EquipFlow**
+**Título do projeto:** Plataforma web para controle de empréstimo de equipamentos — EquipFlow
 
 *Equipe: Alejandro Alexandre 197890. Campo Grande/MS — 2026.*
 
 ---
 
-## 1. Problema e Público-Alvo
+## 1. Problema e público-alvo
 
-### 1.1 Contexto e problema organizacional
+### 1.1 Contexto
 
-O cenário adotado é o **Núcleo de Recursos Didáticos em Tecnologia (NRDT)** de uma instituição de ensino fictícia, análogo a um polo de laboratórios de informática e eletrônica. O núcleo mantém **notebooks, projetores portáteis, multímetros e kits de prototipagem** compartilhados entre docentes e estudantes para aulas práticas, eventos e trabalhos de disciplina.
+O projeto parte do cenário do **Núcleo de Recursos Didáticos em Tecnologia (NRDT)** — um núcleo fictício de laboratório, no mesmo espírito dos polos de informática e eletrônica da UCDB. Lá ficam notebooks, projetores, multímetros e kits de prototipagem que docentes e alunos usam em aula, em eventos e em trabalhos.
 
-Na ausência de um sistema integrado, a gestão costuma depender de **planilhas descentralizadas, formulários em papel e mensagens informais** (e-mail, grupos de mensagem). Esse modelo gera dores operacionais concretas:
+Hoje, sem um sistema único, o controle costuma ser feito com **planilha, papel e mensagem no grupo**. Isso gera problemas do dia a dia:
 
-| Dor | Consequência para a organização |
-|-----|--------------------------------|
-| **Falta de rastreabilidade** | Não se sabe com segurança quem retirou cada item, nem quando a devolução era prevista. |
-| **Conflito de uso** | Dois solicitantes podem disputar o mesmo equipamento por informação desatualizada. |
-| **Perdas e extravios** | Itens permanecem “emprestados” sem registro formal, dificultando auditoria patrimonial. |
-| **Comunicação falha** | A coordenação depende de contatos individuais para confirmar disponibilidade ou cobrar devolução. |
-| **Retrabalho administrativo** | Horas gastas em conferências manuais, busca em planilhas e reconciliação de status. |
-| **Barreira de acesso à informação** | Quem não tem contato direto com quem “controla a planilha” fica sem visibilidade do acervo disponível. |
+- não dá para saber com certeza **quem está com cada item** nem **até quando** deveria devolver;
+- duas pessoas podem achar que o mesmo equipamento está livre;
+- equipamento some do radar e vira “emprestado para sempre”;
+- a coordenação gasta tempo ligando e cobrando um a um;
+- quem não fala com quem “manda na planilha” fica sem saber o que está disponível.
 
-O problema central é a **falta de um repositório único, acessível via navegador**, que centralize o cadastro de patrimônio, a situação de cada item e o **ciclo completo** de solicitação, aprovação, empréstimo e devolução — com histórico confiável para apoiar a gestão de recursos físicos.
+O que queremos resolver é ter **um lugar na web** onde o patrimônio, os pedidos e as devoluções fiquem registrados, com histórico, em vez de informação espalhada.
 
-Do ponto de vista de **gestão organizacional**, isso significa ineficiência no uso de ativos compartilhados, custo de tempo da equipe de coordenação e risco de **exclusão operacional**: docentes e estudantes autorizados que não conseguem consultar disponibilidade em tempo real deixam de utilizar recursos que poderiam apoiar o ensino.
+### 1.2 Quem usa o sistema
 
-### 1.2 Público-alvo
+Há dois perfis, com login separado:
 
-O **EquipFlow** atende dois perfis distintos, com permissões separadas por autenticação:
+**Administrador (coordenação do NRDT)** — cadastra equipamentos (nome, código de patrimônio, descrição), marca se está disponível, emprestado ou em manutenção, **aprova ou recusa** pedidos e acompanha o que está na rua.
 
-| Perfil | Quem representa | O que precisa do sistema |
-|--------|-----------------|---------------------------|
-| **Administrador de patrimônio** | Coordenação do NRDT / responsável pelo acervo | Cadastrar e editar equipamentos (código de patrimônio, descrição); alterar situação (`disponível`, `emprestado`, `manutenção`); **aprovar ou recusar** pedidos pendentes; acompanhar empréstimos ativos, histórico e recusados; tomar decisões com base em indicadores consolidados. |
-| **Solicitante** | Docente ou estudante autorizado a retirar equipamentos | Consultar catálogo de itens **disponíveis**; visualizar ficha do equipamento; **solicitar empréstimo** informando data prevista de **retirada** e de **devolução** (mínimo de 3 dias entre elas) e aceite de termo de responsabilidade; acompanhar pedidos (pendente, ativo, encerrado, recusado); **registrar devolução** quando for o tomador do empréstimo ativo. |
+**Solicitante (docente ou aluno autorizado)** — vê o que está livre, abre a ficha do item, faz o **pedido de empréstimo** com data de retirada e de devolução (mínimo de 3 dias entre elas), aceita o termo de responsabilidade e, depois de aprovado, **registra a devolução**.
 
-A separação de perfis (`admin` e `borrower`) reflete a realidade de equipes em laboratórios e núcleos de recursos: quem **governa o patrimônio** não executa as mesmas tarefas que quem **consome** o recurso, mas ambos precisam da mesma fonte de verdade sobre disponibilidade e prazos.
+No código os papéis são `admin` e `borrower`. A ideia é simples: quem cuida do acervo não é quem leva o notebook para casa, mas os dois precisam ver a mesma lista de disponibilidade e os mesmos prazos.
 
 ---
 
-## 2. Justificativa Tecnológica
+## 2. Justificativa da solução e das tecnologias
 
-### 2.1 Por que uma plataforma web full stack
+### 2.1 Por que web
 
-Uma **aplicação web** responde ao problema de forma sustentável porque:
+Optamos por uma **aplicação web** porque qualquer pessoa autorizada entra pelo navegador, no laboratório ou em casa, sem instalar programa em cada PC. Os dados ficam num **banco relacional** (um registro por usuário, equipamento e empréstimo), o que ajuda a não perder histórico. O formato também combina com o que vimos nas disciplinas do semestre: front end, back end, API e rede.
 
-- permite **acesso simultâneo multiusuário** a partir de diferentes dispositivos e laboratórios, sem instalação local em cada estação;
-- concentra dados em um **único repositório relacional**, garantindo consistência e histórico auditável;
-- facilita evolução para integrações futuras (notificações por e-mail, API institucional, relatórios gerenciais);
-- alinha-se às competências das disciplinas do semestre (front end, back end, redes e integração de sistemas).
+### 2.2 Tecnologias
 
-A tecnologia, neste projeto, não é fim em si: é o meio para **otimizar recursos compartilhados**, reduzir conflitos e promover **equidade operacional** — todos os perfis autorizados consultam a mesma informação de disponibilidade, sem depender de “quem sabe na planilha”.
+| Parte | O que usamos | Para quê |
+|-------|----------------|----------|
+| Interface | React 19, TypeScript, Vite | Telas do painel, formulários e listas |
+| Visual | CSS modular + Tailwind (tema claro/escuro) | Painéis, tabelas responsivas, contraste e foco no teclado |
+| API | Python, FastAPI, Uvicorn | Regras de negócio, login, empréstimos |
+| Banco | SQLAlchemy + SQLite (`equipflow.db`) | Guardar usuários, equipamentos e empréstimos |
+| Segurança | JWT + senha com hash (bcrypt) | Cada um vê só o que o perfil permite |
 
-### 2.2 Stack adotada
+Em um ambiente real daria para trocar o SQLite por PostgreSQL ou MySQL; para o trabalho da DAC o SQLite basta.
 
-| Camada | Tecnologia | Papel na solução |
-|--------|------------|------------------|
-| **Front-end** | React 19, TypeScript, Vite 8 | Interface em componentes reutilizáveis; tipagem estática reduz erros de integração; Vite acelera desenvolvimento e build para demonstração e implantação estática do cliente. |
-| **Estilo e UX** | CSS com variáveis e `data-theme` (tema claro/escuro) | Controle de contraste, foco visível, layout responsivo e suporte a `prefers-reduced-motion`, sem dependência pesada de bibliotecas de UI. |
-| **Back-end** | Python 3.11–3.13, FastAPI, Uvicorn | API REST com validação Pydantic, documentação OpenAPI automática (`/docs`) e código adequado à disciplina de Programação Back End I. |
-| **Persistência** | SQLAlchemy 2.x + SQLite (`equipflow.db`) | Modelagem relacional explícita (usuários, equipamentos, empréstimos); integridade referencial; adequado ao protótipo acadêmico. Em produção, **PostgreSQL** ou **MySQL** seriam substitutos naturais. |
-| **Autenticação** | JWT (Bearer) + bcrypt (passlib) | Padrão de mercado para APIs REST; sessão stateless no servidor; papéis `admin` e `borrower` embutidos no token. |
-| **Redes** | HTTP/1.1, JSON, CORS (desenvolvimento), HTTPS (produção recomendada) | Modelo **cliente-servidor**: navegador como cliente; API como servidor de aplicação; em implantação real, DNS e TLS garantem confidencialidade e integridade em trânsito (Redes de Computadores Aplicada). |
+### 2.3 Como o front e o back conversam
 
-### 2.3 Comunicação entre front-end e back-end
+O navegador chama a API em JSON. As rotas principais são `auth`, `equipment` e `loans` (o front centraliza isso em `frontend/src/api.ts`). Quem está logado manda o token no cabeçalho `Authorization: Bearer …`.
 
-A integração foi estruturada para **eficiência, clareza de contrato e manutenção**:
+Em desenvolvimento o Vite faz **proxy** das chamadas para `http://127.0.0.1:8000`, o que facilita testar no mesmo PC ou no celular na rede da faculdade. No build de produção usa-se a variável `VITE_API_URL`.
 
-1. **Contrato REST em JSON** — O front-end consome endpoints agrupados em `auth`, `equipment` e `loans`, espelhados no módulo central `frontend/src/api.ts`. Cada requisição envia `Content-Type: application/json` e, quando autenticado, o cabeçalho `Authorization: Bearer <token>`.
+As regras importantes — datas do empréstimo, termo na versão certa, bloqueio se o item já tem pedido, multa por atraso — ficam no **servidor**. A tela valida para ajudar o usuário, mas quem manda é a API. Assim ninguém “furta” o sistema só mudando o formulário no navegador.
 
-2. **Cliente HTTP único** — A função `api<T>()` centraliza `fetch`, montagem da URL base, injeção do token (`localStorage`, chave `equipflow_token`), parsing de erros no formato FastAPI (`detail` como string ou lista) e mensagens em português para falhas de rede ou serviço indisponível.
+### 2.4 Manutenção depois do semestre
 
-3. **Ambientes de execução** — Em desenvolvimento, URLs relativas passam pelo **proxy do Vite**, que encaminha `/auth`, `/equipment`, `/loans` e `/health` para `http://127.0.0.1:8000`, simplificando testes no mesmo host e em dispositivos móveis na LAN. Em build de produção, a variável `VITE_API_URL` aponta para a API publicada.
-
-4. **Segurança e papéis** — O back-end valida o JWT em rotas protegidas e aplica `require_admin` onde necessário (cadastro de patrimônio, aprovação de pedidos). O front-end redireciona a experiência conforme `user.role` após `GET /auth/me`.
-
-5. **Regras de negócio no servidor** — Bloqueios (item em manutenção, empréstimo pendente/ativo no mesmo patrimônio, versão do termo `2026-05`, **validação de datas** de retirada/devolução com intervalo mínimo de 3 dias) são enforced na API, não apenas na interface — garantindo consistência mesmo com múltiplos clientes.
-
-Essa arquitetura **desacopla** apresentação e regra de negócio: a interface pode evoluir (novos painéis, relatórios) sem reescrever a API; a API pode atender outros clientes (aplicativo móvel, integração institucional) mantendo o mesmo contrato.
-
-### 2.4 Sustentabilidade técnica
-
-- **Documentação viva da API** via Swagger/OpenAPI reduz ambiguidade para manutenção e para o relatório acadêmico.
-- **Modelo de dados relacional** (três entidades principais com FKs) suporta crescimento do acervo e histórico de empréstimos.
-- **Caminho de evolução** identificado: migrar SQLite → PostgreSQL; extrair regras para camada de serviços; adicionar fila de notificações (e-mail) para atrasos; hospedar front-end estático (CDN ou servidor web) e API em origens distintas com CORS e HTTPS configurados.
+A API gera documentação em `/docs` (Swagger). O modelo tem três tabelas principais ligadas por chave estrangeira. Se o NRDT crescer, os passos naturais seriam: banco maior, envio de e-mail nos avisos de atraso (hoje só há alerta na tela) e hospedar front e API com HTTPS.
 
 ---
 
-## 3. Objetivos e Funcionalidades
+## 3. Objetivos e funcionalidades
 
-### 3.1 Objetivo principal
+### 3.1 Objetivo
 
-**Oferecer um protótipo web funcional que centralize o ciclo de empréstimo e devolução de equipamentos didáticos**, com rastreabilidade de quem solicitou, qual item, prazo de devolução e aceite de termo de responsabilidade — priorizando **eficiência operacional**, **usabilidade** da interface, **acessibilidade digital** e **inclusão** de diferentes perfis organizacionais no mesmo fluxo de informação.
+Colocar no ar um **protótipo** que registre pedido, aprovação, uso e devolução de equipamentos didáticos, com nome de quem pediu, qual item, prazo e aceite do termo — de forma que a coordenação gaste menos tempo conferindo planilha e o aluno/docente saiba o que pode pegar.
 
-### 3.2 Mapa das cinco principais funcionalidades
+### 3.2 O que o sistema faz (cinco pontos para a apresentação)
 
-| # | Funcionalidade | Descrição | Valor para a gestão |
-|---|----------------|-----------|---------------------|
-| **1** | **Autenticação e painéis por perfil** | Login com e-mail e senha; sessão JWT; painéis distintos para administrador e solicitante, com **indicadores (KPIs)**: disponíveis, pendentes, ativos, em atraso e histórico. Atualização manual e automática (~12 s) quando a aba está visível. | Visão imediata do estado do acervo e da fila de trabalho, sem planilhas paralelas. |
-| **2** | **Gestão de patrimônio** | Administrador cadastra equipamentos (nome, código de patrimônio, descrição), edita registros, busca no acervo e altera situação (`disponível`, `emprestado`, `manutenção`), com bloqueios quando há empréstimo pendente ou ativo. | Inventário único e confiável; manutenção registrada impede empréstimo indevido. |
-| **3** | **Catálogo e solicitação de empréstimo** | Solicitante consulta itens disponíveis, abre **ficha do equipamento** e usa assistente em **dois passos**: (1) datas previstas de **retirada** e **devolução** (mínimo 3 dias de calendário, validadas na interface e na API); (2) leitura e aceite do **termo de responsabilidade** (versão `2026-05`), com registro de data/versão no banco. | Pedido formal, padronizado e rastreável; reduz ambiguidade de “combinado por mensagem”. |
-| **4** | **Pipeline de aprovação** | Pedido criado como `pendente`; administrador **aprova** (→ `ativo`, equipamento `emprestado`, `approved_at` = retirada efetiva) ou **recusa** (→ `recusado`, sem retirada efetiva); tomador registra **devolução** (→ `finalizado`, equipamento `disponível`). | Controle institucional antes da saída do patrimônio; histórico de recusas e encerramentos. |
-| **5** | **Rastreabilidade e alertas operacionais** | Listagens de empréstimos por estado; histórico para auditoria mínima; **destaque visual** de empréstimos com prazo vencido (contagem “Em atraso” e linhas alertadas nas tabelas). | Antecipação de cobrança e priorização da coordenação; base para relatórios futuros. |
+1. **Login e painéis** — Admin e solicitante entram com e-mail e senha ou perfil de demonstração no carrossel (ícone de administrador ou de solicitante); cada um vê um painel diferente, com contadores (disponíveis, pendentes, ativos, em atraso). No admin, as filas **Solicitações pendentes** e **Empréstimos ativos** ficam empilhadas (uma abaixo da outra) para leitura sem rolagem horizontal. A lista atualiza sozinha a cada ~12 segundos se a aba estiver aberta.
 
-**Fluxo operacional consolidado:**
+2. **Cadastro de equipamentos** — O admin inclui e edita itens, busca no acervo e muda a situação (disponível, emprestado, manutenção). Não dá para mandar para manutenção se ainda há pedido pendente ou empréstimo aberto naquele patrimônio.
+
+3. **Pedido de empréstimo** — O solicitante vê só o que está livre, escolhe datas em um assistente de dois passos (retirada e devolução, no mínimo 3 dias de intervalo) e aceita o termo (versão `2026-05`, gravada no banco).
+
+4. **Aprovação** — Pedido novo fica `pendente`. O admin aprova (`ativo`, equipamento vira `emprestado`, registra a retirada efetiva) ou recusa (`recusado`). Só o tomador marca a devolução (`finalizado`, equipamento volta a `disponivel`).
+
+5. **Atraso** — Se passar da data de devolução, o sistema calcula **R$ 15,00 por dia**, marca o equipamento como bloqueado, impede novo pedido até devolver e permite ao admin **notificar o tomador** (mensagem no painel do solicitante).
+
+Fluxo em uma linha:
 
 ```
-Solicitação + termo → Pendente → Aprovação (admin) → Ativo → Devolução (tomador) → Finalizado
-                              ↘ Recusado
+Pedido + termo → pendente → aprovação → ativo → devolução → finalizado
+                      ↘ recusado
 ```
 
-### 3.3 Usabilidade, acessibilidade e inclusão
+### 3.3 Acessibilidade
 
-O protótipo incorpora práticas alinhadas à inclusão digital e à eficiência de uso:
+Seguimos o básico de acessibilidade na interface: página em português, link “pular para o conteúdo”, textos alternativos em tabelas, `aria-live` em mensagens de erro, tema claro/escuro e respeito a quem prefere menos animação (`prefers-reduced-motion`). Formulários e modais têm rótulo e foco visível no teclado.
 
-- página em **português** (`lang="pt-BR"`);
-- **skip links** (“Ir para o conteúdo”) na login e no painel;
-- tabelas com **legendas para leitores de tela** (`sr-only`);
-- regiões com **`aria-live`** para feedback de sincronização e erros;
-- **tema claro/escuro** persistido, com contraste adequado;
-- respeito a **`prefers-reduced-motion`** para usuários sensíveis a animação;
-- rótulos explícitos em formulários e diálogos modais com `aria-modal` e foco visível (`:focus-visible`).
+### 3.4 Dados guardados no banco
 
-Esses recursos demonstram que a solução foi pensada não só para quem opera o sistema diariamente, mas para **diferentes necessidades de acesso** — requisito explícito do contexto DAC (eficiência, usabilidade, acessibilidade e inclusão).
-
-### 3.4 Modelo de dados (resumo técnico)
-
-- **Usuario:** id, e-mail, nome, senha (hash), papel (`admin` | `borrower`).
-- **Equipamento:** id, nome, código de patrimônio (único), descrição opcional, status (`disponivel` | `emprestado` | `manutencao`).
-- **Emprestimo:** id, equipamento_id, borrower_id, `created_at` (pedido), `pickup_at` (retirada prevista), `due_at` (devolução prevista), `approved_at` (retirada efetiva, preenchido na aprovação), `returned_at` (opcional), status (`pendente` | `ativo` | `finalizado` | `recusado`), aceite do termo (data e versão).
+- **Usuario:** e-mail, nome, senha (hash), papel (`admin` ou `borrower`).
+- **Equipamento:** nome, código de patrimônio (único), descrição, status (`disponivel`, `emprestado`, `manutencao`).
+- **Emprestimo:** equipamento, tomador, datas de retirada prevista (`pickup_at`), devolução prevista (`due_at`), retirada efetiva (`approved_at`), devolução real (`returned_at`), status do pedido, data e versão do termo aceito.
+- **LoanNotification:** avisos de atraso enviados pelo admin ao tomador.
 
 ---
 
-## Anexo — Entrega e referências
+## 4. Regras de negócio
 
-**Checklist DAC (UCDB):** este documento atende aos itens exigidos para o PDF do projeto — problema, público-alvo, justificativa da solução e das tecnologias, objetivos e funcionalidades — conforme `docs/checklist-orientacoes-ucdb.txt` e Plano de Aprendizagem do semestre.
+As regras abaixo estão na API; a interface só repete o que o servidor já decidiu.
 
-**Exportação para PDF:** abrir este arquivo no Word ou LibreOffice; aplicar **capa institucional** (UCDB, curso, semestre, componentes, título, equipe, professor referência, cidade/ano); inserir **2 a 3 capturas de tela** do sistema (`docs/screenshots/`); exportar como PDF e enviar conforme orientação do AVA.
+### 4.1 Estados do empréstimo
 
-**Referências:**
+| Status | O que significa |
+|--------|-----------------|
+| `pendente` | Pedido enviado; o equipamento ainda não saiu de fato. |
+| `ativo` | Admin aprovou; item emprestado; retirada efetiva registrada. |
+| `recusado` | Admin negou; outro pode pedir o mesmo item. |
+| `finalizado` | Tomador devolveu; item disponível de novo. |
 
-- FASTAPI. Documentação oficial. Disponível em: https://fastapi.tiangolo.com/
-- REACT. Documentação oficial. Disponível em: https://react.dev/
-- W3C. Web Content Accessibility Guidelines (WCAG) 2.2 — visão geral. Disponível em: https://www.w3.org/WAI/standards-guidelines/wcag/
+Datas: no pedido o aluno informa retirada e devolução **previstas**; na aprovação grava-se a retirada **efetiva**; na devolução, a data **real**.
+
+### 4.2 Datas do pedido
+
+Na criação do empréstimo (`POST /loans`):
+
+- retirada não pode ser antes de hoje;
+- devolução tem que ser depois da retirada (não no mesmo dia);
+- entre retirada e devolução vão pelo menos **3 dias de calendário**.
+
+Se errar, a API devolve erro 400 com mensagem em português.
+
+### 4.3 Termo de responsabilidade
+
+Sem marcar o aceite o pedido não sai. A versão tem que ser `2026-05` (a mesma da tela); se a pessoa estiver com a página antiga aberta, o sistema pede para atualizar. Ficam gravados a data do aceite e a versão no empréstimo.
+
+### 4.4 Equipamento
+
+- `disponivel` — pode receber pedido, desde que não haja outro pendente ou ativo no mesmo código.
+- `emprestado` — ligado a um empréstimo aprovado.
+- `manutencao` — não aparece para pedido novo.
+
+O solicitante só vê itens disponíveis e sem pedido na frente. O admin não pode “forçar” disponível ou manutenção enquanto houver pedido ou empréstimo aberto naquele patrimônio.
+
+### 4.5 Quem pode fazer o quê
+
+| Ação | Admin | Solicitante |
+|------|:-----:|:-----------:|
+| Cadastrar/editar equipamento | Sim | Não |
+| Aprovar ou recusar pedido | Sim | Não |
+| Pedir empréstimo | Não | Sim |
+| Registrar devolução | Não | Sim (só o tomador daquele empréstimo) |
+| Ver todos os empréstimos | Sim | Só os seus |
+
+### 4.6 Atraso na devolução
+
+Consideramos atraso quando o empréstimo está `ativo` e a data de devolução prevista já passou (conta pelo fim do dia em UTC).
+
+**O que o sistema faz:**
+
+- calcula **R$ 15,00 por dia** de atraso (arquivo `backend/app/overdue.py`);
+- mostra o valor nas tabelas do admin e do solicitante;
+- trata o equipamento como **bloqueado** enquanto não devolver;
+- **não deixa** o tomador abrir outro pedido até regularizar;
+- o admin clica em **Notificar tomador** — grava um aviso que aparece no painel do solicitante (pode marcar como lido);
+- a devolução **ainda pode** ser feita pelo botão Devolver; ao finalizar, a multa para de subir e o bloqueio cai.
+
+**O que não faz (por enquanto):** e-mail automático, débito em conta, encerrar o empréstimo sozinho. A cobrança em dinheiro e qualquer medida disciplinar ficam com a coordenação, usando o sistema como registro.
+
+Exemplo: 3 dias de atraso → multa de R$ 45,00.
+
+### 4.7 Outros casos que costumam surgir na banca
+
+- **Dois pedidos no mesmo equipamento** — o primeiro pendente ou ativo trava; o segundo recebe erro.
+- **Admin devolve pelo aluno** — não; só o tomador registra devolução.
+- **Devolver antes do prazo** — pode, não há trava de “só no dia X”.
+- **Pedido pendente para sempre** — não expira; o admin precisa aprovar ou recusar.
+- **Pedido pendente e a data de retirada já passou** — o sistema não cancela sozinho; o admin decide na prática.
+
+### 4.8 Onde está no código
+
+| Assunto | Arquivo |
+|---------|---------|
+| Datas do empréstimo | `backend/app/loan_dates.py` |
+| Multa e atraso | `backend/app/overdue.py` |
+| Pedidos, aprovação, devolução, notificar | `backend/app/routers/loans.py` |
+| Avisos ao solicitante | `backend/app/routers/notifications.py` |
+| Situação do patrimônio | `backend/app/routers/equipment.py` |
+| Termo (versão) | `backend/app/terms.py`, `frontend/src/constants/terms.ts` |
 
 ---
 
-*Protótipo acadêmico — cenário NRDT fictício. Não substitui sistemas oficiais da instituição.*
+## Anexo — Entrega
+
+Este texto cobre o que o Plano de Aprendizagem pede no PDF do projeto: problema, público, justificativa, tecnologias, objetivos, funcionalidades e regras de negócio (ver `docs/checklist-orientacoes-ucdb.txt`).
+
+Para entregar: abrir no Word ou LibreOffice, colocar a **capa** (UCDB, curso, semestre, disciplinas, título, equipe, professor, cidade/ano), incluir **2 ou 3 prints** de `docs/screenshots/`, exportar em PDF e enviar no AVA.
+
+**Referências**
+
+- FastAPI — https://fastapi.tiangolo.com/
+- React — https://react.dev/
+- WCAG 2.2 (visão geral) — https://www.w3.org/WAI/standards-guidelines/wcag/
+
+---
+
+*Cenário NRDT fictício para o trabalho da DAC. Não é sistema oficial da UCDB.*
