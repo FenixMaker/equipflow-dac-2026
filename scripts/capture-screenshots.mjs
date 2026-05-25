@@ -165,8 +165,11 @@ async function main() {
 
     await loginAs(page, 'Coordenação NRDT')
     await page.getByRole('heading', { name: /Patrimônio e empréstimos/i, level: 2 }).waitFor({ timeout: 45_000 })
+    await setTheme(page, 'light')
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.getByRole('heading', { name: /Patrimônio e empréstimos/i, level: 2 }).waitFor({ timeout: 45_000 })
     await settleUi(page)
-    await shotLocator(page, page.locator('.app-main-inner'), path.join(outDir, '03-admin-painel.png'))
+    await shotLocator(page, page.locator('.app-layout'), path.join(outDir, '03-admin-painel.png'))
 
     await page.getByRole('button', { name: 'Editar' }).first().click({ force: true })
     await page.locator('.edit-equipment-dialog').waitFor({ state: 'visible', timeout: 10000 })
@@ -178,7 +181,10 @@ async function main() {
     await page.keyboard.press('Escape')
     await page.locator('.edit-equipment-dialog').waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
 
-    await page.locator('#pending-loans').scrollIntoViewIfNeeded()
+    await page.evaluate(() => {
+      document.getElementById('pending-loans')?.scrollIntoView({ block: 'start' })
+    })
+    await page.waitForTimeout(400)
     await settleUi(page)
     await shotLocator(
       page,
@@ -190,8 +196,11 @@ async function main() {
 
     await loginAs(page, 'Prof. Eduardo Rocha')
     await page.getByRole('heading', { name: 'Meus empréstimos', level: 2 }).waitFor({ timeout: 45_000 })
+    await setTheme(page, 'light')
+    await page.reload({ waitUntil: 'domcontentloaded' })
+    await page.getByRole('heading', { name: 'Meus empréstimos', level: 2 }).waitFor({ timeout: 45_000 })
     await settleUi(page)
-    await shotLocator(page, page.locator('.app-main-inner'), path.join(outDir, '06-solicitante-painel.png'))
+    await shotLocator(page, page.locator('.app-layout'), path.join(outDir, '06-solicitante-painel.png'))
 
     await page.getByRole('button', { name: 'Ver ficha' }).first().click({ force: true })
     await page.locator('.equipment-detail-dialog, dialog').first().waitFor({ state: 'visible', timeout: 10000 })
