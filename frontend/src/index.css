@@ -1364,13 +1364,20 @@ textarea {
 }
 
 .patrimony-code {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
   font-family: ui-monospace, 'Cascadia Code', monospace;
   font-size: 0.82rem;
-  padding: 0.2rem 0.45rem;
-  border-radius: 4px;
-  background: var(--void);
-  border: 1px solid var(--border);
-  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--primary) 14%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border));
+  color: var(--primary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .patrimony-inline {
@@ -1744,14 +1751,19 @@ textarea {
 
 .equipment-detail-dialog,
 .loan-request-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   max-width: min(560px, calc(100vw - 2rem));
-  width: 100%;
+  width: min(560px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 2px;
   background: var(--surface);
   color: var(--text);
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
 .equipment-detail-dialog::backdrop,
@@ -1807,6 +1819,8 @@ textarea {
 
 .loan-request-inner {
   padding: 1.25rem 1.35rem 1.15rem;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
 }
 
 .loan-request-steps {
@@ -1998,13 +2012,19 @@ input[type='date'] {
 
 /* â€”â€”â€” DiÃ¡logo de confirmaÃ§Ã£o â€”â€”â€” */
 .confirm-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
   max-width: min(420px, calc(100vw - 2rem));
+  width: min(420px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 2px;
   background: var(--surface);
   color: var(--text);
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
 }
 
 .confirm-dialog::backdrop {
@@ -2013,6 +2033,8 @@ input[type='date'] {
 
 .confirm-dialog-inner {
   padding: 1.25rem 1.35rem 1.15rem;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
 }
 
 .confirm-dialog-title {

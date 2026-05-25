@@ -48,8 +48,7 @@ export function EquipmentCatalogCard({
         </div>
         <h4 className="font-semibold leading-snug">{equipment.name}</h4>
         <p className="text-muted-foreground text-xs">
-          Patrimônio{' '}
-          <code className="bg-muted rounded px-1 py-0.5 font-mono text-xs">{equipment.inventory_code}</code>
+          Patrimônio <code className="patrimony-code patrimony-inline">{equipment.inventory_code}</code>
         </p>
         <p className="text-muted-foreground line-clamp-3 flex-1 text-sm">{excerpt}</p>
       </CardContent>

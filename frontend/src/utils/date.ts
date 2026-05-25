@@ -28,16 +28,19 @@ export function dateInputToUtcIso(dateStr: string): string {
   return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).toISOString()
 }
 
-function parseDateInput(dateStr: string): Date | null {
+function dateInputStamp(dateStr: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null
   const [y, m, d] = dateStr.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
-function startOfLocalDay(d: Date): Date {
-  const x = new Date(d)
-  x.setHours(0, 0, 0, 0)
-  return x
+  const stamp = Date.UTC(y, m - 1, d, 12, 0, 0, 0)
+  const check = new Date(stamp)
+  if (
+    check.getUTCFullYear() !== y ||
+    check.getUTCMonth() !== m - 1 ||
+    check.getUTCDate() !== d
+  ) {
+    return null
+  }
+  return stamp
 }
 
 /** Valida retirada/devolução no formulário; retorna mensagem ou null. */
@@ -47,22 +50,19 @@ export function validateLoanDateInputs(pickup: string, due: string): string | nu
   if (!pickupNorm || !dueNorm) {
     return 'Indique a data de retirada e a data de devolução.'
   }
-  const pickupD = parseDateInput(pickupNorm)
-  const dueD = parseDateInput(dueNorm)
-  if (!pickupD || !dueD) return 'Datas inválidas.'
+  const pickupStamp = dateInputStamp(pickupNorm)
+  const dueStamp = dateInputStamp(dueNorm)
+  if (pickupStamp === null || dueStamp === null) return 'Datas inválidas.'
 
-  const today = startOfLocalDay(new Date())
-  const pickupDay = startOfLocalDay(pickupD)
-  if (pickupDay.getTime() < today.getTime()) {
+  const today = minDateValue()
+  if (pickupNorm < today) {
     return 'A data de retirada não pode ser anterior a hoje.'
   }
 
-  pickupD.setHours(0, 0, 0, 0)
-  dueD.setHours(0, 0, 0, 0)
-  if (dueD <= pickupD) {
+  if (dueStamp <= pickupStamp) {
     return 'A data de devolução deve ser posterior à data de retirada (não pode ser no mesmo dia).'
   }
-  const gap = Math.round((dueD.getTime() - pickupD.getTime()) / 86400000)
+  const gap = Math.round((dueStamp - pickupStamp) / 86400000)
   if (gap < MIN_LOAN_DAYS) {
     return `O empréstimo deve ter no mínimo ${MIN_LOAN_DAYS} dias entre retirada e devolução.`
   }
@@ -105,7 +105,8 @@ export function isLoanOverdue(dueIso: string, status: LoanStatus): boolean {
 }
 
 export function dateSummaryFromInput(dateStr: string): string {
-  const d = parseDateInput(dateStr)
-  if (!d) return dateStr || '—'
+  const stamp = dateInputStamp(dateStr)
+  if (stamp === null) return dateStr || '—'
+  const d = new Date(stamp)
   return d.toLocaleDateString('pt-BR', { dateStyle: 'short' })
 }

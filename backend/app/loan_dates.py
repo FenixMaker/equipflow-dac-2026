@@ -8,10 +8,10 @@ MIN_LOAN_DAYS = 3
 _CAMPUS_TZ = timezone(timedelta(hours=-4))
 
 
-def _as_utc_date(dt: datetime) -> date:
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).date()
+def _calendar_date(dt: datetime) -> date:
+    # `pickup_at`/`due_at` representam um dia escolhido no formulário, não um instante real.
+    # Por isso a validação usa a data declarada no payload, sem converter de fuso.
+    return dt.date()
 
 
 def _today_campus(now: datetime | None = None) -> date:
@@ -25,9 +25,8 @@ def validate_loan_schedule(pickup_at: datetime, due_at: datetime, *, now: dateti
     Regras: retirada >= hoje; devolução > retirada; intervalo mínimo de MIN_LOAN_DAYS dias de calendário.
     """
     today = _today_campus(now)
-    # O front envia o dia escolhido como meio-dia UTC (YYYY-MM-DDT12:00:00Z).
-    pickup_d = _as_utc_date(pickup_at)
-    due_d = _as_utc_date(due_at)
+    pickup_d = _calendar_date(pickup_at)
+    due_d = _calendar_date(due_at)
 
     if pickup_d < today:
         return "A data de retirada não pode ser anterior a hoje."
